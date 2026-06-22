@@ -13,7 +13,7 @@ async function syncInventory() {
   const currentUser = await getCurrentUser();
 
   if (!currentUser?.steam_id) {
-    throw new Error("You must be signed in with Steam.");
+    return;
   }
 
   const url = `https://steamcommunity.com/inventory/${currentUser.steam_id}/730/2?l=english`;
@@ -23,10 +23,12 @@ async function syncInventory() {
       "User-Agent": "Mozilla/5.0",
       Accept: "application/json",
     },
+    cache: "no-store",
   });
 
   if (!response.ok) {
-    throw new Error("Could not fetch Steam inventory. Your inventory may be private.");
+    revalidatePath("/inventory");
+    return;
   }
 
   const data = await response.json();
@@ -65,7 +67,7 @@ async function syncInventory() {
     const { error } = await supabase.from("inventory_items").insert(items);
 
     if (error) {
-      throw new Error(error.message);
+      console.error(error);
     }
   }
 
@@ -126,6 +128,10 @@ export default async function InventoryPage() {
             <button className="rounded-xl bg-orange-500 px-6 py-3 font-semibold text-black hover:bg-orange-400">
               Sync Inventory
             </button>
+
+            <p className="mt-2 text-right text-sm text-zinc-400">
+              Inventory is already up to date.
+            </p>
           </form>
         </div>
 

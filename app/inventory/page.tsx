@@ -1,12 +1,24 @@
 import AppShell from "../components/AppShell";
 import InventorySearchGrid from "../components/InventorySearchGrid";
 import { supabase } from "../lib/supabase";
+import { getCurrentUser } from "../lib/currentUser";
 
 export default async function InventoryPage() {
-  const { data: inventoryItems } = await supabase
-    .from("inventory_items")
-    .select("id, item_name, image_url, inspect_link, tradable")
-    .order("item_name");
+  const currentUser = await getCurrentUser();
+
+if (!currentUser) {
+  return (
+    <AppShell>
+      <h1 className="text-4xl font-bold">Please sign in with Steam</h1>
+    </AppShell>
+  );
+}
+
+const { data: inventoryItems } = await supabase
+  .from("inventory_items")
+  .select("id, item_name, image_url, inspect_link, tradable")
+  .eq("user_id", currentUser.id)
+  .order("item_name");
 
   return (
     <AppShell>

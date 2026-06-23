@@ -1,4 +1,5 @@
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import AppShell from "../components/AppShell";
 import ListingInventoryPicker from "../components/ListingInventoryPicker";
 import WantedItemPicker from "../components/WantedItemPicker";
@@ -90,6 +91,8 @@ async function createListing(formData: FormData) {
 
   revalidatePath("/listings");
   revalidatePath("/search-trades");
+
+  redirect("/listings?success=1");
 }
 
 async function refreshListing(formData: FormData) {
@@ -244,7 +247,14 @@ function TradeItemCard({
   );
 }
 
-export default async function ListingsPage() {
+export default async function ListingsPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ success?: string }>;
+}) {
+  const params = searchParams ? await searchParams : {};
+  const showSuccess = params.success === "1";
+
   const currentUser = await getCurrentUser();
 
   if (!currentUser) {
@@ -299,6 +309,12 @@ export default async function ListingsPage() {
 
       <div className="relative z-10">
         <h1 className="text-5xl font-bold">My Listings</h1>
+
+        {showSuccess && (
+          <div className="mt-4 rounded-2xl border border-green-500 bg-green-500/10 p-4 text-green-400">
+            ✓ Trade was successfully listed.
+          </div>
+        )}
 
         <p className="mt-3 text-zinc-300">
           Create, refresh, and manage your active trade listings.

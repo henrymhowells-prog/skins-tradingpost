@@ -38,6 +38,18 @@ async function createListing(formData: FormData) {
   }
 
   const now = new Date();
+  const nowIso = now.toISOString();
+
+  const { count: activeListingCount } = await supabase
+    .from("listings")
+    .select("*", { count: "exact", head: true })
+    .eq("user_id", currentUser.id)
+    .gt("expires_at", nowIso);
+
+  if ((activeListingCount || 0) >= 10) {
+    redirect("/listings?limit=1");
+  }
+
   const expiresAt = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
 
   const { data: listing, error } = await supabase
@@ -250,10 +262,11 @@ function TradeItemCard({
 export default async function ListingsPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ success?: string }>;
+  searchParams?: Promise<{ success?: string; limit?: string }>;
 }) {
   const params = searchParams ? await searchParams : {};
   const showSuccess = params.success === "1";
+  const showLimit = params.limit === "1";
 
   const currentUser = await getCurrentUser();
 
@@ -272,11 +285,6 @@ export default async function ListingsPage({
     .select("id, item_name, image_url, inspect_link, tradable")
     .eq("user_id", currentUser.id)
     .order("item_name");
-
-  const { data: cs2Items } = await supabase
-    .from("cs2_items")
-    .select("id, item_name, image_url, weapon_type, rarity")
-    .range(0, 25000);
 
   const { data: listings } = await supabase
     .from("listings")
@@ -303,6 +311,18 @@ export default async function ListingsPage({
           .in("listing_id", listingIds)
       : { data: [] };
 
+  const wantedNames = Array.from(
+    new Set((wantedItems || []).map((item) => item.item_name).filter(Boolean))
+  );
+
+  const { data: cs2Items } =
+    wantedNames.length > 0
+      ? await supabase
+          .from("cs2_items")
+          .select("item_name, image_url, weapon_type, rarity")
+          .in("item_name", wantedNames)
+      : { data: [] };
+
   return (
     <AppShell>
       <PageBackground />
@@ -313,6 +333,12 @@ export default async function ListingsPage({
         {showSuccess && (
           <div className="mt-4 rounded-2xl border border-green-500 bg-green-500/10 p-4 text-green-400">
             ✓ Trade was successfully listed.
+          </div>
+        )}
+
+        {showLimit && (
+          <div className="mt-4 rounded-2xl border border-red-500 bg-red-500/10 p-4 text-red-400">
+            You can only have 10 active trade listings at once.
           </div>
         )}
 

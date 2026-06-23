@@ -2,6 +2,92 @@ import AppShell from "../../components/AppShell";
 import { supabase } from "../../lib/supabase";
 import { getCurrentUser } from "../../lib/currentUser";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
+function PageBackground() {
+  return (
+    <div className="fixed inset-y-0 left-64 right-0 -z-0 overflow-hidden bg-[#121318]">
+      <div
+        className="absolute inset-0 opacity-40"
+        style={{
+          backgroundImage:
+            "radial-gradient(circle, rgba(255,255,255,0.12) 1px, transparent 1px)",
+          backgroundSize: "48px 48px",
+        }}
+      />
+
+      <div className="absolute -left-20 top-0 h-full w-40 -skew-x-12 bg-blue-800" />
+      <div className="absolute left-64 top-72 h-[700px] w-72 -skew-x-12 bg-blue-800" />
+
+      <div className="absolute -right-20 top-0 h-full w-44 -skew-x-12 bg-orange-500" />
+      <div className="absolute right-12 top-0 h-full w-24 -skew-x-12 bg-orange-400/70" />
+
+      <div className="absolute right-20 top-12 text-4xl font-black italic text-white/70">
+        BETA
+      </div>
+    </div>
+  );
+}
+
+function ItemOverpayCard({ side }: { side: "orange" | "blue" }) {
+  return (
+    <div
+      className={`rounded-xl border p-4 ${
+        side === "orange"
+          ? "border-orange-500 bg-orange-500/10"
+          : "border-blue-500 bg-blue-500/10"
+      }`}
+    >
+      <div className="mb-3 flex h-32 items-center justify-center rounded-xl bg-zinc-800 text-4xl">
+        💰
+      </div>
+
+      <p
+        className={`text-center text-sm font-bold ${
+          side === "orange" ? "text-orange-400" : "text-blue-400"
+        }`}
+      >
+        Item Overpay
+      </p>
+    </div>
+  );
+}
+
+function TradeItemCard({
+  item,
+  imageUrl,
+}: {
+  item: any;
+  imageUrl?: string | null;
+}) {
+  return (
+    <div className="rounded-xl border border-zinc-800 bg-zinc-900/90 p-4">
+      <div className="mb-3 flex h-32 items-center justify-center rounded-xl bg-zinc-800">
+        {imageUrl ? (
+          <img
+            src={imageUrl}
+            alt={item.item_name}
+            className="max-h-full object-contain"
+          />
+        ) : (
+          <span className="text-sm text-zinc-500">No Image</span>
+        )}
+      </div>
+
+      <p className="line-clamp-2 font-bold">{item.item_name}</p>
+
+      {(item.float_min || item.float_max || item.pattern_seed) && (
+        <div className="mt-2 text-xs text-zinc-400">
+          {item.float_min && <p>Min Float: {item.float_min}</p>}
+          {item.float_max && <p>Max Float: {item.float_max}</p>}
+          {item.pattern_seed && <p>Pattern: {item.pattern_seed}</p>}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default async function TradeDetailsPage({
   params,
 }: {
@@ -20,7 +106,18 @@ export default async function TradeDetailsPage({
   if (!listing) {
     return (
       <AppShell>
-        <h1 className="text-4xl font-bold">Listing Not Found</h1>
+        <PageBackground />
+
+        <div className="relative z-10 rounded-3xl border border-zinc-800 bg-black/80 p-8 backdrop-blur">
+          <h1 className="text-5xl font-bold">Listing Not Found</h1>
+
+          <a
+            href="/search-trades"
+            className="mt-6 inline-block rounded-xl bg-orange-500 px-5 py-3 font-semibold text-black hover:bg-orange-400"
+          >
+            Back to Search Trades
+          </a>
+        </div>
       </AppShell>
     );
   }
@@ -58,189 +155,182 @@ export default async function TradeDetailsPage({
     .select("*")
     .eq("listing_id", id);
 
-  const { data: inventoryItems } = await supabase
-    .from("inventory_items")
-    .select("*");
+  const offerInventoryIds = (offerItems || [])
+    .map((item) => item.inventory_item_id)
+    .filter(Boolean);
+
+  const { data: inventoryItems } =
+    offerInventoryIds.length > 0
+      ? await supabase
+          .from("inventory_items")
+          .select("*")
+          .in("id", offerInventoryIds)
+      : { data: [] };
 
   const { data: cs2Items } = await supabase
     .from("cs2_items")
     .select("item_name, image_url, weapon_type, rarity")
     .range(0, 25000);
 
-  function ItemOverpayCard({ side }: { side: "orange" | "blue" }) {
-    return (
-      <div
-        className={`rounded-xl border p-4 ${
-          side === "orange"
-            ? "border-orange-500 bg-orange-500/10"
-            : "border-blue-500 bg-blue-500/10"
-        }`}
-      >
-        <div className="mb-3 flex h-32 items-center justify-center rounded-lg bg-zinc-800 text-4xl">
-          💰
-        </div>
-
-        <p
-          className={`text-center text-sm font-bold ${
-            side === "orange" ? "text-orange-400" : "text-blue-400"
-          }`}
-        >
-          Item Overpay
-        </p>
-      </div>
-    );
-  }
-
   return (
     <AppShell>
-      <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-        <div>
-          <h1 className="text-4xl font-bold">{listing.title}</h1>
+      <PageBackground />
 
-          <p className="mt-2 text-sm text-zinc-500">
-            👁 {viewCount || 0} view{viewCount === 1 ? "" : "s"}
+      <div className="relative z-10">
+        <div className="rounded-3xl border border-zinc-800 bg-black/80 p-8 backdrop-blur">
+          <p className="text-sm font-bold uppercase tracking-wide text-orange-400">
+            Trade Listing
           </p>
-        </div>
-      </div>
 
-      <div className="mt-6 rounded-2xl border border-zinc-800 bg-zinc-900 p-6">
-        <div className="flex items-center gap-4">
-          <a href={trader?.id ? `/user/${trader.id}` : "#"}>
-            <img
-              src={
-                trader?.avatar_url ||
-                "https://avatars.githubusercontent.com/u/9919?s=200&v=4"
-              }
-              alt="Trader Avatar"
-              className="h-16 w-16 rounded-full"
-            />
-          </a>
+          <div className="mt-3 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <h1 className="text-5xl font-black">{listing.title}</h1>
 
-          <div>
-            <a href={trader?.id ? `/user/${trader.id}` : "#"}>
-              <h2 className="text-xl font-bold hover:text-orange-400">
-                {trader?.steam_name || trader?.username || "Unknown Trader"}
-              </h2>
+              <p className="mt-3 text-sm text-zinc-400">
+                👁 {viewCount || 0} view{viewCount === 1 ? "" : "s"} •{" "}
+                {listing.status || "active"}
+              </p>
+            </div>
+
+            <a
+              href="/search-trades"
+              className="rounded-xl border border-zinc-700 px-5 py-3 font-semibold hover:bg-zinc-800"
+            >
+              Back to Search Trades
             </a>
-
-            <p className="text-zinc-400">
-              Trust Score: {trader?.trust_score ?? 5}
-            </p>
           </div>
+        </div>
 
-          <div className="ml-auto flex gap-3">
-            <a
-              href={`/messages?user=${trader?.id}`}
-              className="rounded-xl bg-orange-500 px-5 py-3 font-semibold text-black hover:bg-orange-400"
-            >
-              Message Trader
-            </a>
-
-            <a
-              href={`/report?user=${trader?.id}&listing=${listing.id}`}
-              className="rounded-xl border border-red-500 px-5 py-3 font-semibold text-red-400 hover:bg-red-500 hover:text-white"
-            >
-              Report Listing
-            </a>
-
-            {trader?.profile_url && (
-              <a
-                href={trader.profile_url}
-                target="_blank"
-                rel="noreferrer"
-                className="rounded-xl border border-zinc-700 px-5 py-3 font-semibold hover:bg-zinc-800"
-              >
-                Steam Profile
+        <div className="mt-6 rounded-3xl border border-zinc-800 bg-black/80 p-6 backdrop-blur">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex items-center gap-4">
+              <a href={trader?.id ? `/user/${trader.id}` : "#"}>
+                <img
+                  src={
+                    trader?.avatar_url ||
+                    trader?.steam_avatar ||
+                    "https://avatars.githubusercontent.com/u/9919?s=200&v=4"
+                  }
+                  alt="Trader Avatar"
+                  className="h-20 w-20 rounded-full border-4 border-orange-500 object-cover"
+                />
               </a>
-            )}
+
+              <div>
+                <p className="text-sm font-semibold text-zinc-500">
+                  Posted by
+                </p>
+
+                <a href={trader?.id ? `/user/${trader.id}` : "#"}>
+                  <h2 className="text-2xl font-black hover:text-orange-400">
+                    {trader?.steam_name || trader?.username || "Unknown Trader"}
+                  </h2>
+                </a>
+
+                <p className="mt-1 text-zinc-400">
+                  Trust Score: {trader?.trust_score ?? 5}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-3">
+              <a
+                href={`/messages?user=${trader?.id}`}
+                className="rounded-xl bg-orange-500 px-5 py-3 font-semibold text-black hover:bg-orange-400"
+              >
+                Message Trader
+              </a>
+
+              {trader?.profile_url && (
+                <a
+                  href={trader.profile_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="rounded-xl border border-zinc-700 px-5 py-3 font-semibold hover:bg-zinc-800"
+                >
+                  Steam Profile
+                </a>
+              )}
+
+              <a
+                href={`/report?user=${trader?.id}&listing=${listing.id}`}
+                className="rounded-xl border border-red-500 px-5 py-3 font-semibold text-red-400 hover:bg-red-500 hover:text-white"
+              >
+                Report Listing
+              </a>
+            </div>
           </div>
         </div>
-      </div>
 
-      <div className="mt-8 grid grid-cols-[1fr_auto_1fr] items-start gap-8">
-        <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6">
-          <h2 className="mb-4 text-2xl font-bold text-orange-400">
-            They Give
-          </h2>
+        <div className="mt-8 grid items-start gap-8 lg:grid-cols-[1fr_220px_1fr]">
+          <div className="min-h-[360px] rounded-[32px] border border-zinc-800 bg-black/90 p-6 backdrop-blur">
+            <h2 className="mb-6 text-3xl font-black text-orange-400">
+              Trader Gives
+            </h2>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            {(offerItems || []).map((item) => {
-              const details = (inventoryItems || []).find(
-                (inv) =>
-                  inv.id === item.inventory_item_id ||
-                  inv.item_name === item.item_name
-              );
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              {(offerItems || []).map((item) => {
+                const details = (inventoryItems || []).find(
+                  (inv) =>
+                    inv.id === item.inventory_item_id ||
+                    inv.item_name === item.item_name
+                );
 
-              return (
-                <div
-                  key={item.id}
-                  className="rounded-xl border border-zinc-800 bg-zinc-950 p-4"
-                >
-                  <div className="mb-3 flex h-32 items-center justify-center rounded-lg bg-zinc-800">
-                    {details?.image_url ? (
-                      <img
-                        src={details.image_url}
-                        alt={item.item_name}
-                        className="max-h-full object-contain"
-                      />
-                    ) : (
-                      <span className="text-sm text-zinc-500">No Image</span>
-                    )}
-                  </div>
+                return (
+                  <TradeItemCard
+                    key={item.id}
+                    item={item}
+                    imageUrl={details?.image_url}
+                  />
+                );
+              })}
 
-                  <p className="font-bold">{item.item_name}</p>
-                </div>
-              );
-            })}
+              {listing.give_item_overpay && <ItemOverpayCard side="orange" />}
 
-            {listing.give_item_overpay && <ItemOverpayCard side="orange" />}
+              {(offerItems || []).length === 0 && !listing.give_item_overpay && (
+                <p className="text-zinc-500">No offered items listed.</p>
+              )}
+            </div>
           </div>
-        </div>
 
-        <div className="text-6xl text-orange-500">⇄</div>
+          <div className="hidden min-h-[360px] flex-col items-center justify-center gap-8 lg:flex">
+            <div className="flex items-center gap-3 text-orange-400">
+              <div className="h-1 w-24 bg-orange-500" />
+              <span className="text-6xl leading-none">→</span>
+            </div>
 
-        <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6">
-          <h2 className="mb-4 text-2xl font-bold text-blue-400">
-            They Want
-          </h2>
+            <div className="flex items-center gap-3 text-blue-400">
+              <span className="text-6xl leading-none">←</span>
+              <div className="h-1 w-24 bg-blue-500" />
+            </div>
+          </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            {(wantedItems || []).map((item) => {
-              const details = (cs2Items || []).find(
-                (cs2) => cs2.item_name === item.item_name
-              );
+          <div className="min-h-[360px] rounded-[32px] border border-zinc-800 bg-black/90 p-6 backdrop-blur">
+            <h2 className="mb-6 text-3xl font-black text-blue-400">
+              Trader Wants
+            </h2>
 
-              return (
-                <div
-                  key={item.id}
-                  className="rounded-xl border border-zinc-800 bg-zinc-950 p-4"
-                >
-                  <div className="mb-3 flex h-32 items-center justify-center rounded-lg bg-zinc-800">
-                    {details?.image_url ? (
-                      <img
-                        src={details.image_url}
-                        alt={item.item_name}
-                        className="max-h-full object-contain"
-                      />
-                    ) : (
-                      <span className="text-sm text-zinc-500">No Image</span>
-                    )}
-                  </div>
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              {(wantedItems || []).map((item) => {
+                const details = (cs2Items || []).find(
+                  (cs2) => cs2.item_name === item.item_name
+                );
 
-                  <p className="font-bold">{item.item_name}</p>
+                return (
+                  <TradeItemCard
+                    key={item.id}
+                    item={item}
+                    imageUrl={details?.image_url}
+                  />
+                );
+              })}
 
-                  {(item.float_min || item.float_max || item.pattern_seed) && (
-                    <div className="mt-2 text-xs text-zinc-400">
-                      {item.float_min && <p>Min Float: {item.float_min}</p>}
-                      {item.float_max && <p>Max Float: {item.float_max}</p>}
-                      {item.pattern_seed && <p>Pattern: {item.pattern_seed}</p>}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+              {listing.want_item_overpay && <ItemOverpayCard side="blue" />}
 
-            {listing.want_item_overpay && <ItemOverpayCard side="blue" />}
+              {(wantedItems || []).length === 0 && !listing.want_item_overpay && (
+                <p className="text-zinc-500">No wanted items listed.</p>
+              )}
+            </div>
           </div>
         </div>
       </div>

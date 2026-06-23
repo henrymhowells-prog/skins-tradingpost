@@ -364,7 +364,7 @@ export default async function ListingsPage({
                 </label>
               </div>
 
-              <WantedItemPicker items={cs2Items || []} />
+              <WantedItemPicker />
             </div>
           </div>
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 type CS2Item = {
   id: string;
@@ -18,20 +18,39 @@ type SelectedWantedItem = {
   advanced_open: boolean;
 };
 
-export default function WantedItemPicker({ items }: { items: CS2Item[] }) {
+export default function WantedItemPicker() {
   const [search, setSearch] = useState("");
+  const [results, setResults] = useState<CS2Item[]>([]);
+  const [loading, setLoading] = useState(false);
   const [selectedItems, setSelectedItems] = useState<SelectedWantedItem[]>([]);
 
-  const cleanedSearch = search.trim().toLowerCase();
+  const cleanedSearch = search.trim();
 
-  const filteredItems =
-    cleanedSearch.length === 0
-      ? []
-      : items
-          .filter((item) =>
-            item.item_name.toLowerCase().includes(cleanedSearch)
-          )
-          .slice(0, 60);
+  useEffect(() => {
+    if (cleanedSearch.length < 2) {
+      setResults([]);
+      return;
+    }
+
+    const timeout = setTimeout(async () => {
+      setLoading(true);
+
+      try {
+        const response = await fetch(
+          `/api/cs2/search?q=${encodeURIComponent(cleanedSearch)}`
+        );
+
+        const data = await response.json();
+        setResults(data.items || []);
+      } catch {
+        setResults([]);
+      }
+
+      setLoading(false);
+    }, 300);
+
+    return () => clearTimeout(timeout);
+  }, [cleanedSearch]);
 
   function toggleItem(itemName: string) {
     const alreadySelected = selectedItems.some(
@@ -147,7 +166,7 @@ export default function WantedItemPicker({ items }: { items: CS2Item[] }) {
                         e.target.value
                       )
                     }
-                    placeholder="Float min (0 - 0.999999)"
+                    placeholder="Float min"
                     className="rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm outline-none focus:border-blue-500"
                   />
 
@@ -164,7 +183,7 @@ export default function WantedItemPicker({ items }: { items: CS2Item[] }) {
                         e.target.value
                       )
                     }
-                    placeholder="Float max (0 - 0.999999)"
+                    placeholder="Float max"
                     className="rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm outline-none focus:border-blue-500"
                   />
 
@@ -181,7 +200,7 @@ export default function WantedItemPicker({ items }: { items: CS2Item[] }) {
                         e.target.value
                       )
                     }
-                    placeholder="Pattern (0 - 1000)"
+                    placeholder="Pattern"
                     className="rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm outline-none focus:border-blue-500"
                   />
                 </div>
@@ -191,18 +210,18 @@ export default function WantedItemPicker({ items }: { items: CS2Item[] }) {
         </div>
       )}
 
-      {cleanedSearch.length === 0 ? (
+      {cleanedSearch.length < 2 ? (
         <p className="mt-5 rounded-xl border border-zinc-800 bg-zinc-900 p-4 text-sm text-zinc-400">
-          Start typing to search CS2 items.
+          Start typing to search all CS2 items.
         </p>
       ) : (
         <>
           <p className="mt-4 text-xs text-zinc-500">
-            Showing up to 60 results.
+            {loading ? "Searching..." : "Showing up to 60 results."}
           </p>
 
           <div className="mt-3 grid max-h-[520px] gap-3 overflow-y-auto pr-2 sm:grid-cols-2 lg:grid-cols-3">
-            {filteredItems.map((item) => {
+            {results.map((item) => {
               const selected = selectedItems.some(
                 (selectedItem) => selectedItem.item_name === item.item_name
               );

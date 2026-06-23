@@ -62,6 +62,7 @@ async function createListing(formData: FormData) {
     const { data: inventoryItems } = await supabase
       .from("inventory_items")
       .select("id, item_name")
+      .eq("user_id", currentUser.id)
       .in("id", offerItemIds);
 
     await supabase.from("listing_offer_items").insert(
@@ -88,21 +89,27 @@ async function createListing(formData: FormData) {
   }
 
   revalidatePath("/listings");
-  revalidatePath("/browse");
+  revalidatePath("/search-trades");
 }
 
 async function refreshListing(formData: FormData) {
   "use server";
 
   const listingId = String(formData.get("listing_id") || "");
+  const currentUser = await getCurrentUser();
+
+  if (!currentUser || !listingId) return;
 
   const { data: listing } = await supabase
     .from("listings")
-    .select("last_refresh_at")
+    .select("id, user_id, last_refresh_at")
     .eq("id", listingId)
+    .eq("user_id", currentUser.id)
     .single();
 
-  if (listing?.last_refresh_at) {
+  if (!listing) return;
+
+  if (listing.last_refresh_at) {
     const lastRefresh = new Date(listing.last_refresh_at).getTime();
     const fifteenMinutes = 15 * 60 * 1000;
 
@@ -118,7 +125,7 @@ async function refreshListing(formData: FormData) {
   if (error) return;
 
   revalidatePath("/listings");
-  revalidatePath("/browse");
+  revalidatePath("/search-trades");
   revalidatePath(`/trade/${listingId}`);
 }
 
@@ -128,9 +135,18 @@ async function deleteListing(formData: FormData) {
   const listingId = String(formData.get("listing_id") || "");
   const currentUser = await getCurrentUser();
 
-  if (!currentUser) {
+  if (!currentUser || !listingId) {
     throw new Error("You must be signed in.");
   }
+
+  const { data: listing } = await supabase
+    .from("listings")
+    .select("id")
+    .eq("id", listingId)
+    .eq("user_id", currentUser.id)
+    .single();
+
+  if (!listing) return;
 
   await supabase.from("listing_offer_items").delete().eq("listing_id", listingId);
   await supabase.from("listing_wanted_items").delete().eq("listing_id", listingId);
@@ -142,7 +158,7 @@ async function deleteListing(formData: FormData) {
     .eq("user_id", currentUser.id);
 
   revalidatePath("/listings");
-  revalidatePath("/browse");
+  revalidatePath("/search-trades");
 }
 
 function PageBackground() {
@@ -229,11 +245,22 @@ function TradeItemCard({
 }
 
 export default async function ListingsPage() {
+  const currentUser = await getCurrentUser();
+
+  if (!currentUser) {
+    return (
+      <AppShell>
+        <h1 className="text-4xl font-bold">Please sign in with Steam</h1>
+      </AppShell>
+    );
+  }
+
   const nowIso = new Date().toISOString();
 
   const { data: inventoryItems } = await supabase
     .from("inventory_items")
     .select("id, item_name, image_url, inspect_link, tradable")
+    .eq("user_id", currentUser.id)
     .order("item_name");
 
   const { data: cs2Items } = await supabase
@@ -244,16 +271,27 @@ export default async function ListingsPage() {
   const { data: listings } = await supabase
     .from("listings")
     .select("*")
+    .eq("user_id", currentUser.id)
     .gt("expires_at", nowIso)
     .order("refreshed_at", { ascending: false });
 
-  const { data: offerItems } = await supabase
-    .from("listing_offer_items")
-    .select("*");
+  const listingIds = (listings || []).map((listing) => listing.id);
 
-  const { data: wantedItems } = await supabase
-    .from("listing_wanted_items")
-    .select("*");
+  const { data: offerItems } =
+    listingIds.length > 0
+      ? await supabase
+          .from("listing_offer_items")
+          .select("*")
+          .in("listing_id", listingIds)
+      : { data: [] };
+
+  const { data: wantedItems } =
+    listingIds.length > 0
+      ? await supabase
+          .from("listing_wanted_items")
+          .select("*")
+          .in("listing_id", listingIds)
+      : { data: [] };
 
   return (
     <AppShell>
@@ -323,172 +361,179 @@ export default async function ListingsPage() {
           <h2 className="text-3xl font-bold">Active Listings</h2>
 
           <div className="mt-5 grid gap-8">
-            {(listings || []).map((listing) => {
-              const canRefresh =
-                !listing.last_refresh_at ||
-                Date.now() -
-                  new Date(listing.last_refresh_at).getTime() >
-                  15 * 60 * 1000;
+            {(listings || []).length === 0 ? (
+              <div className="rounded-3xl border border-zinc-800 bg-black/80 p-8 text-zinc-500 backdrop-blur">
+                You have no active listings yet.
+              </div>
+            ) : (
+              (listings || []).map((listing) => {
+                const canRefresh =
+                  !listing.last_refresh_at ||
+                  Date.now() -
+                    new Date(listing.last_refresh_at).getTime() >
+                    15 * 60 * 1000;
 
-              const cooldownMinutes = listing.last_refresh_at
-                ? Math.ceil(
-                    (15 * 60 * 1000 -
-                      (Date.now() -
-                        new Date(listing.last_refresh_at).getTime())) /
-                      60000
-                  )
-                : 0;
+                const cooldownMinutes = listing.last_refresh_at
+                  ? Math.ceil(
+                      (15 * 60 * 1000 -
+                        (Date.now() -
+                          new Date(listing.last_refresh_at).getTime())) /
+                        60000
+                    )
+                  : 0;
 
-              const giving = (offerItems || []).filter(
-                (item) => item.listing_id === listing.id
-              );
+                const giving = (offerItems || []).filter(
+                  (item) => item.listing_id === listing.id
+                );
 
-              const wanting = (wantedItems || []).filter(
-                (item) => item.listing_id === listing.id
-              );
+                const wanting = (wantedItems || []).filter(
+                  (item) => item.listing_id === listing.id
+                );
 
-              return (
-                <div
-                  key={listing.id}
-                  className="rounded-3xl border border-zinc-800 bg-black/80 p-8 backdrop-blur"
-                >
-                  <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
-                    <div>
-                      <h3 className="text-3xl font-bold">{listing.title}</h3>
+                return (
+                  <div
+                    key={listing.id}
+                    className="rounded-3xl border border-zinc-800 bg-black/80 p-8 backdrop-blur"
+                  >
+                    <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
+                      <div>
+                        <h3 className="text-3xl font-bold">{listing.title}</h3>
 
-                      <p className="mt-2 text-sm text-green-400">
-                        Status: {listing.status}
-                      </p>
-
-                      {listing.refreshed_at && (
-                        <p className="mt-1 text-sm text-zinc-400">
-                          Posted:{" "}
-                          {new Date(listing.refreshed_at).toLocaleString()}
+                        <p className="mt-2 text-sm text-green-400">
+                          Status: {listing.status}
                         </p>
-                      )}
 
-                      {listing.expires_at && (
-                        <p className="mt-1 text-sm text-zinc-400">
-                          Expires:{" "}
-                          {new Date(listing.expires_at).toLocaleString()}
-                        </p>
-                      )}
-                    </div>
+                        {listing.refreshed_at && (
+                          <p className="mt-1 text-sm text-zinc-400">
+                            Posted:{" "}
+                            {new Date(listing.refreshed_at).toLocaleString()}
+                          </p>
+                        )}
 
-                    <div className="flex flex-wrap gap-3">
-                      <a
-                        href={`/trade/${listing.id}`}
-                        className="rounded-xl bg-orange-500 px-5 py-3 font-semibold text-black hover:bg-orange-400"
-                      >
-                        View Trade
-                      </a>
+                        {listing.expires_at && (
+                          <p className="mt-1 text-sm text-zinc-400">
+                            Expires:{" "}
+                            {new Date(listing.expires_at).toLocaleString()}
+                          </p>
+                        )}
+                      </div>
 
-                      {canRefresh ? (
-                        <form action={refreshListing}>
+                      <div className="flex flex-wrap gap-3">
+                        <a
+                          href={`/trade/${listing.id}`}
+                          className="rounded-xl bg-orange-500 px-5 py-3 font-semibold text-black hover:bg-orange-400"
+                        >
+                          View Trade
+                        </a>
+
+                        {canRefresh ? (
+                          <form action={refreshListing}>
+                            <input
+                              type="hidden"
+                              name="listing_id"
+                              value={listing.id}
+                            />
+
+                            <button className="rounded-xl border border-green-500 px-5 py-3 font-semibold text-green-400 hover:bg-green-500 hover:text-white">
+                              Refresh
+                            </button>
+                          </form>
+                        ) : (
+                          <button
+                            disabled
+                            className="cursor-not-allowed rounded-xl border border-zinc-700 px-5 py-3 font-semibold text-zinc-500"
+                            title="You can only refresh once every 15 minutes"
+                          >
+                            Refresh available in{" "}
+                            {Math.max(cooldownMinutes, 1)}m
+                          </button>
+                        )}
+
+                        <form action={deleteListing}>
                           <input
                             type="hidden"
                             name="listing_id"
                             value={listing.id}
                           />
 
-                          <button className="rounded-xl border border-green-500 px-5 py-3 font-semibold text-green-400 hover:bg-green-500 hover:text-white">
-                            Refresh
+                          <button className="rounded-xl border border-red-500 px-5 py-3 font-semibold text-red-400 hover:bg-red-500 hover:text-white">
+                            Delete
                           </button>
                         </form>
-                      ) : (
-                        <button
-                          disabled
-                          className="cursor-not-allowed rounded-xl border border-zinc-700 px-5 py-3 font-semibold text-zinc-500"
-                          title="You can only refresh once every 15 minutes"
-                        >
-                          Refresh available in {Math.max(cooldownMinutes, 1)}m
-                        </button>
-                      )}
-
-                      <form action={deleteListing}>
-                        <input
-                          type="hidden"
-                          name="listing_id"
-                          value={listing.id}
-                        />
-
-                        <button className="rounded-xl border border-red-500 px-5 py-3 font-semibold text-red-400 hover:bg-red-500 hover:text-white">
-                          Delete
-                        </button>
-                      </form>
-                    </div>
-                  </div>
-
-                  <div className="mt-8 grid items-center gap-8 lg:grid-cols-[1fr_220px_1fr]">
-                    <div className="min-h-[340px] rounded-[32px] border border-zinc-800 bg-black/90 p-6">
-                      <h4 className="mb-6 text-2xl font-bold text-orange-400">
-                        You Give
-                      </h4>
-
-                      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                        {giving.map((item) => {
-                          const details = (inventoryItems || []).find(
-                            (inv) =>
-                              inv.id === item.inventory_item_id ||
-                              inv.item_name === item.item_name
-                          );
-
-                          return (
-                            <TradeItemCard
-                              key={item.id}
-                              item={item}
-                              imageUrl={details?.image_url}
-                            />
-                          );
-                        })}
-
-                        {listing.give_item_overpay && (
-                          <ItemOverpayCard side="orange" />
-                        )}
                       </div>
                     </div>
 
-                    <div className="hidden flex-col items-center justify-center gap-8 lg:flex">
-                      <div className="flex items-center gap-3 text-orange-400">
-                        <div className="h-1 w-24 bg-orange-500" />
-                        <span className="text-6xl leading-none">→</span>
+                    <div className="mt-8 grid items-center gap-8 lg:grid-cols-[1fr_220px_1fr]">
+                      <div className="min-h-[340px] rounded-[32px] border border-zinc-800 bg-black/90 p-6">
+                        <h4 className="mb-6 text-2xl font-bold text-orange-400">
+                          You Give
+                        </h4>
+
+                        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                          {giving.map((item) => {
+                            const details = (inventoryItems || []).find(
+                              (inv) =>
+                                inv.id === item.inventory_item_id ||
+                                inv.item_name === item.item_name
+                            );
+
+                            return (
+                              <TradeItemCard
+                                key={item.id}
+                                item={item}
+                                imageUrl={details?.image_url}
+                              />
+                            );
+                          })}
+
+                          {listing.give_item_overpay && (
+                            <ItemOverpayCard side="orange" />
+                          )}
+                        </div>
                       </div>
 
-                      <div className="flex items-center gap-3 text-blue-400">
-                        <span className="text-6xl leading-none">←</span>
-                        <div className="h-1 w-24 bg-blue-500" />
+                      <div className="hidden flex-col items-center justify-center gap-8 lg:flex">
+                        <div className="flex items-center gap-3 text-orange-400">
+                          <div className="h-1 w-24 bg-orange-500" />
+                          <span className="text-6xl leading-none">→</span>
+                        </div>
+
+                        <div className="flex items-center gap-3 text-blue-400">
+                          <span className="text-6xl leading-none">←</span>
+                          <div className="h-1 w-24 bg-blue-500" />
+                        </div>
                       </div>
-                    </div>
 
-                    <div className="min-h-[340px] rounded-[32px] border border-zinc-800 bg-black/90 p-6">
-                      <h4 className="mb-6 text-2xl font-bold text-blue-400">
-                        You Want
-                      </h4>
+                      <div className="min-h-[340px] rounded-[32px] border border-zinc-800 bg-black/90 p-6">
+                        <h4 className="mb-6 text-2xl font-bold text-blue-400">
+                          You Want
+                        </h4>
 
-                      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                        {wanting.map((item) => {
-                          const details = (cs2Items || []).find(
-                            (cs2) => cs2.item_name === item.item_name
-                          );
+                        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                          {wanting.map((item) => {
+                            const details = (cs2Items || []).find(
+                              (cs2) => cs2.item_name === item.item_name
+                            );
 
-                          return (
-                            <TradeItemCard
-                              key={item.id}
-                              item={item}
-                              imageUrl={details?.image_url}
-                            />
-                          );
-                        })}
+                            return (
+                              <TradeItemCard
+                                key={item.id}
+                                item={item}
+                                imageUrl={details?.image_url}
+                              />
+                            );
+                          })}
 
-                        {listing.want_item_overpay && (
-                          <ItemOverpayCard side="blue" />
-                        )}
+                          {listing.want_item_overpay && (
+                            <ItemOverpayCard side="blue" />
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })
+            )}
           </div>
         </div>
       </div>

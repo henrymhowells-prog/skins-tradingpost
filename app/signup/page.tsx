@@ -1,48 +1,41 @@
-"use client";
+import { redirect } from "next/navigation";
+import { createSupabaseServerClient } from "../lib/supabaseServer";
+import { supabase as adminSupabase } from "../lib/supabase";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { createClient } from "@supabase/supabase-js";
+async function signUp(formData: FormData) {
+  "use server";
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+  const username = String(formData.get("username") || "").trim();
+  const email = String(formData.get("email") || "").trim().toLowerCase();
+  const password = String(formData.get("password") || "");
 
-export default function SignupPage() {
-  const router = useRouter();
+  if (!username || !email || !password) {
+    redirect("/signup?error=Missing required fields");
+  }
 
-  const [username, setUsername] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const supabase = await createSupabaseServerClient();
 
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+  });
 
-  async function signUp(e: React.FormEvent) {
-    e.preventDefault();
+  if (error) {
+    redirect(`/signup?error=${encodeURIComponent(error.message)}`);
+  }
 
-    setLoading(true);
-    setError("");
+  if (!data.user) {
+    redirect("/signup?error=Unable to create account");
+  }
 
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-    });
+  const { data: existingUser } = await adminSupabase
+    .from("users")
+    .select("id")
+    .eq("auth_user_id", data.user.id)
+    .maybeSingle();
 
-    if (error) {
-      setError(error.message);
-      setLoading(false);
-      return;
-    }
-
-    if (!data.user) {
-      setError("Unable to create account.");
-      setLoading(false);
-      return;
-    }
-
-    const { error: insertError } = await supabase.from("users").insert({
+  if (!existingUser) {
+    const { error: insertError } = await adminSupabase.from("users").insert({
       auth_user_id: data.user.id,
       email,
       username,
@@ -53,18 +46,25 @@ export default function SignupPage() {
     });
 
     if (insertError) {
-      setError(insertError.message);
-      setLoading(false);
-      return;
+      redirect(`/signup?error=${encodeURIComponent(insertError.message)}`);
     }
-
-    router.push("/dashboard");
   }
+
+  redirect("/dashboard");
+}
+
+export default async function SignupPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ error?: string }>;
+}) {
+  const params = searchParams ? await searchParams : {};
+  const error = params.error;
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-zinc-950 p-6">
       <form
-        onSubmit={signUp}
+        action={signUp}
         className="w-full max-w-md rounded-3xl border border-zinc-800 bg-zinc-900 p-8"
       >
         <h1 className="mb-8 text-center text-4xl font-black text-white">
@@ -72,28 +72,25 @@ export default function SignupPage() {
         </h1>
 
         <input
+          name="username"
           className="mb-4 w-full rounded-xl border border-zinc-700 bg-zinc-950 p-4 text-white"
           placeholder="Username"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
           required
         />
 
         <input
+          name="email"
           className="mb-4 w-full rounded-xl border border-zinc-700 bg-zinc-950 p-4 text-white"
           placeholder="Email"
           type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
           required
         />
 
         <input
+          name="password"
           className="mb-6 w-full rounded-xl border border-zinc-700 bg-zinc-950 p-4 text-white"
           placeholder="Password"
           type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
           required
         />
 
@@ -103,11 +100,8 @@ export default function SignupPage() {
           </p>
         )}
 
-        <button
-          disabled={loading}
-          className="w-full rounded-xl bg-orange-500 p-4 font-bold text-black hover:bg-orange-400"
-        >
-          {loading ? "Creating account..." : "Create Account"}
+        <button className="w-full rounded-xl bg-orange-500 p-4 font-bold text-black hover:bg-orange-400">
+          Create Account
         </button>
 
         <p className="mt-6 text-center text-zinc-400">

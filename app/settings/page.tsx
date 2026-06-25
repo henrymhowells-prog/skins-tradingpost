@@ -115,6 +115,23 @@ export default function SettingsPage() {
                 ✓ Account active and in good standing
               </p>
             </div>
+
+            <div className="mt-10 rounded-3xl border border-red-500/30 bg-red-500/10 p-6">
+  <h2 className="text-2xl font-bold text-red-400">
+    Account
+  </h2>
+
+  <p className="mt-2 text-zinc-400">
+    Sign out of your account on this device.
+  </p>
+
+  <a
+    href="/logout"
+    className="mt-6 inline-block rounded-xl bg-red-500 px-6 py-3 font-semibold text-white transition hover:bg-red-600"
+  >
+    Log Out
+  </a>
+</div>
           </div>
         </div>
       </div>

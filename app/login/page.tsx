@@ -1,47 +1,40 @@
-"use client";
+import { redirect } from "next/navigation";
+import { createSupabaseServerClient } from "../lib/supabaseServer";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { createClient } from "@supabase/supabase-js";
+async function login(formData: FormData) {
+  "use server";
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+  const email = String(formData.get("email") || "").trim().toLowerCase();
+  const password = String(formData.get("password") || "");
 
-export default function LoginPage() {
-  const router = useRouter();
+  if (!email || !password) return;
 
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const supabase = await createSupabaseServerClient();
 
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const { error } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  });
 
-  async function login(e: React.FormEvent) {
-    e.preventDefault();
-
-    setLoading(true);
-    setError("");
-
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    if (error) {
-      setError(error.message);
-      setLoading(false);
-      return;
-    }
-
-    router.push("/dashboard");
+  if (error) {
+    redirect(`/login?error=${encodeURIComponent(error.message)}`);
   }
+
+  redirect("/dashboard");
+}
+
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ error?: string }>;
+}) {
+  const params = searchParams ? await searchParams : {};
+  const error = params.error;
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-zinc-950 p-6">
       <form
-        onSubmit={login}
+        action={login}
         className="w-full max-w-md rounded-3xl border border-zinc-800 bg-zinc-900 p-8"
       >
         <h1 className="mb-8 text-center text-4xl font-black text-white">
@@ -49,20 +42,18 @@ export default function LoginPage() {
         </h1>
 
         <input
+          name="email"
           className="mb-4 w-full rounded-xl border border-zinc-700 bg-zinc-950 p-4 text-white"
           placeholder="Email"
           type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
           required
         />
 
         <input
+          name="password"
           className="mb-6 w-full rounded-xl border border-zinc-700 bg-zinc-950 p-4 text-white"
           placeholder="Password"
           type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
           required
         />
 
@@ -72,11 +63,8 @@ export default function LoginPage() {
           </p>
         )}
 
-        <button
-          disabled={loading}
-          className="w-full rounded-xl bg-orange-500 p-4 font-bold text-black hover:bg-orange-400"
-        >
-          {loading ? "Signing in..." : "Sign In"}
+        <button className="w-full rounded-xl bg-orange-500 p-4 font-bold text-black hover:bg-orange-400">
+          Sign In
         </button>
 
         <p className="mt-6 text-center text-zinc-400">

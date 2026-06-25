@@ -14,17 +14,10 @@ export async function GET(request: Request) {
     return NextResponse.redirect(new URL("/messages", request.url));
   }
 
-  await supabase
-    .from("messages")
-    .update({ read: true })
-    .eq("sender_id", userId)
-    .eq("receiver_id", currentUser.id);
-
-  await supabase
-    .from("notifications")
-    .update({ read: true })
-    .eq("user_id", currentUser.id)
-    .eq("title", "New Message");
+  await supabase.rpc("mark_conversation_read", {
+    p_current_user_id: currentUser.id,
+    p_other_user_id: userId,
+  });
 
   return NextResponse.redirect(
     new URL(`/messages?user=${userId}&opened=${Date.now()}`, request.url)

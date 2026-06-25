@@ -1,4 +1,3 @@
-import { revalidatePath } from "next/cache";
 import AppShell from "../components/AppShell";
 import { supabase } from "../lib/supabase";
 import { getCurrentUser } from "../lib/currentUser";
@@ -45,9 +44,6 @@ async function sendMessage(formData: FormData) {
   if (notificationError) {
     throw new Error(notificationError.message);
   }
-
-  revalidatePath("/messages");
-  revalidatePath("/notifications");
 }
 
 function PageBackground() {
@@ -104,10 +100,67 @@ export default async function MessagesPage({
     );
   }
 
-  const { data: users } = await supabase
-    .from("users")
-    .select("*")
-    .neq("id", currentUser.id);
+  const { data: allMessages } = await supabase
+    .from("messages")
+    .select("id, sender_id, receiver_id, read, created_at")
+    .or(`sender_id.eq.${currentUser.id},receiver_id.eq.${currentUser.id}`)
+    .order("created_at", { ascending: false });
+
+  const conversationStats = new Map<
+    string,
+    { lastMessageAt: string; unreadCount: number }
+  >();
+
+  for (const message of allMessages || []) {
+    const otherUserId =
+      message.sender_id === currentUser.id
+        ? message.receiver_id
+        : message.sender_id;
+
+    if (!conversationStats.has(otherUserId)) {
+      conversationStats.set(otherUserId, {
+        lastMessageAt: message.created_at,
+        unreadCount: 0,
+      });
+    }
+
+    if (message.receiver_id === currentUser.id && message.read === false) {
+      const stats = conversationStats.get(otherUserId);
+
+      if (stats) {
+        stats.unreadCount += 1;
+      }
+    }
+  }
+
+  const conversationUserIds = Array.from(conversationStats.keys());
+
+  if (selectedUserId && !conversationUserIds.includes(selectedUserId)) {
+    conversationUserIds.push(selectedUserId);
+  }
+
+  const { data: users } =
+    conversationUserIds.length > 0
+      ? await supabase
+          .from("users")
+          .select("*")
+          .in("id", conversationUserIds)
+      : { data: [] };
+
+  const sortedUsers = (users || []).sort((a, b) => {
+    const aStats = conversationStats.get(a.id);
+    const bStats = conversationStats.get(b.id);
+
+    const aTime = aStats?.lastMessageAt
+      ? new Date(aStats.lastMessageAt).getTime()
+      : 0;
+
+    const bTime = bStats?.lastMessageAt
+      ? new Date(bStats.lastMessageAt).getTime()
+      : 0;
+
+    return bTime - aTime;
+  });
 
   if (selectedUserId) {
     await supabase
@@ -147,40 +200,51 @@ export default async function MessagesPage({
             <h2 className="text-2xl font-bold">Traders</h2>
 
             <div className="mt-5 max-h-[680px] space-y-3 overflow-y-auto pr-1">
-              {(users || []).length === 0 ? (
-                <p className="text-sm text-zinc-500">No traders found.</p>
+              {sortedUsers.length === 0 ? (
+                <p className="text-sm text-zinc-500">No conversations yet.</p>
               ) : (
-                (users || []).map((user) => (
-                  <a
-                    key={user.id}
-                    href={`/messages?user=${user.id}`}
-                    className={`flex items-center gap-3 rounded-2xl border p-3 transition ${
-                      user.id === selectedUserId
-                        ? "border-orange-500 bg-orange-500/10"
-                        : "border-zinc-800 bg-zinc-950/90 hover:border-orange-500"
-                    }`}
-                  >
-                    <img
-                      src={
-                        user.avatar_url ||
-                        user.steam_avatar ||
-                        "https://avatars.githubusercontent.com/u/9919?s=200&v=4"
-                      }
-                      alt={user.steam_name || user.username || "Trader"}
-                      className="h-11 w-11 rounded-full"
-                    />
+                sortedUsers.map((user) => {
+                  const unreadCount =
+                    conversationStats.get(user.id)?.unreadCount || 0;
 
-                    <div className="min-w-0">
-                      <p className="truncate font-bold">
-                        {user.steam_name || user.username || "Unknown User"}
-                      </p>
+                  return (
+                    <a
+                      key={user.id}
+                      href={`/messages?user=${user.id}`}
+                      className={`flex items-center gap-3 rounded-2xl border p-3 transition ${
+                        user.id === selectedUserId
+                          ? "border-orange-500 bg-orange-500/10"
+                          : "border-zinc-800 bg-zinc-950/90 hover:border-orange-500"
+                      }`}
+                    >
+                      <img
+                        src={
+                          user.avatar_url ||
+                          user.steam_avatar ||
+                          "https://avatars.githubusercontent.com/u/9919?s=200&v=4"
+                        }
+                        alt={user.steam_name || user.username || "Trader"}
+                        className="h-11 w-11 rounded-full"
+                      />
 
-                      <p className="text-xs text-zinc-500">
-                        ⭐ {user.average_rating || 0} ({user.review_count || 0})
-                      </p>
-                    </div>
-                  </a>
-                ))
+                      <div className="min-w-0">
+                        <p className="truncate font-bold">
+  {user.steam_name || user.username || "Unknown User"}
+</p>
+
+                        <p className="text-xs text-zinc-500">
+                          ⭐ {user.average_rating || 0} ({user.review_count || 0})
+                        </p>
+                      </div>
+
+                      {unreadCount > 0 && (
+                        <span className="ml-auto rounded-full bg-orange-500 px-2 py-0.5 text-xs font-bold text-black">
+                          {unreadCount}
+                        </span>
+                      )}
+                    </a>
+                  );
+                })
               )}
             </div>
           </div>
@@ -195,17 +259,23 @@ export default async function MessagesPage({
                       selectedUser.steam_avatar ||
                       "https://avatars.githubusercontent.com/u/9919?s=200&v=4"
                     }
-                    alt={selectedUser.steam_name || selectedUser.username || "Trader"}
+                    alt={
+                      selectedUser.steam_name ||
+                      selectedUser.username ||
+                      "Trader"
+                    }
                     className="h-16 w-16 rounded-full"
                   />
 
                   <div>
-                    <h2 className="text-3xl font-bold">
-                      {selectedUser.steam_name ||
-                        selectedUser.username ||
-                        "Unknown User"}
-                    </h2>
-
+                    <a
+  href={`/user/${selectedUser.id}`}
+  className="text-3xl font-bold hover:text-orange-400"
+>
+  {selectedUser.steam_name ||
+    selectedUser.username ||
+    "Unknown User"}
+</a>
                     <p className="mt-1 text-sm text-zinc-400">
                       ⭐ {selectedUser.average_rating || 0} (
                       {selectedUser.review_count || 0} reviews)

@@ -50,10 +50,29 @@ export default async function AppShell({
             </a>
 
             <a
-              href="/messages"
-              className="block rounded-lg px-4 py-3 hover:bg-zinc-800"
+              href="/notifications"
+              className="flex items-center justify-between rounded-lg px-4 py-3 hover:bg-zinc-800"
             >
-              Messages
+              <span>Notifications</span>
+
+              {unreadNotificationCount > 0 && (
+                <span className="rounded-full bg-red-500 px-2 py-0.5 text-xs font-bold text-white">
+                  {unreadNotificationCount}
+                </span>
+              )}
+            </a>
+
+            <a
+              href="/messages"
+              className="flex items-center justify-between rounded-lg px-4 py-3 hover:bg-zinc-800"
+            >
+              <span>Messages</span>
+
+              {unreadMessageCount > 0 && (
+                <span className="rounded-full bg-orange-500 px-2 py-0.5 text-xs font-bold text-black">
+                  {unreadMessageCount}
+                </span>
+              )}
             </a>
 
             <a

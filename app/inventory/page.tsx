@@ -7,6 +7,49 @@ import { getCurrentUser } from "../lib/currentUser";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
+async function fetchFullSteamInventory(steamId: string) {
+  let allAssets: any[] = [];
+  let allDescriptions: any[] = [];
+  let startAssetId = "";
+  let hasMore = true;
+
+  while (hasMore) {
+    const steamUrl = `https://steamcommunity.com/inventory/${steamId}/730/2?l=english&count=5000${
+      startAssetId ? `&start_assetid=${startAssetId}` : ""
+    }`;
+
+    const response = await fetch(steamUrl, {
+      method: "GET",
+      headers: {
+        "User-Agent": "Mozilla/5.0",
+        Accept: "application/json",
+        "Cache-Control": "no-cache",
+      },
+      cache: "no-store",
+      next: {
+        revalidate: 0,
+      },
+    });
+
+    if (!response.ok) {
+      break;
+    }
+
+    const data = await response.json();
+
+    allAssets = [...allAssets, ...(data.assets || [])];
+    allDescriptions = [...allDescriptions, ...(data.descriptions || [])];
+
+    hasMore = Boolean(data.more_items && data.last_assetid);
+    startAssetId = data.last_assetid || "";
+  }
+
+  return {
+    assets: allAssets,
+    descriptions: allDescriptions,
+  };
+}
+
 async function syncInventory() {
   "use server";
 
@@ -16,25 +59,9 @@ async function syncInventory() {
     return;
   }
 
-  const url = `https://steamcommunity.com/inventory/${currentUser.steam_id}/730/2?l=english`;
-
-  const response = await fetch(url, {
-    headers: {
-      "User-Agent": "Mozilla/5.0",
-      Accept: "application/json",
-    },
-    cache: "no-store",
-  });
-
-  if (!response.ok) {
-    revalidatePath("/inventory");
-    return;
-  }
-
-  const data = await response.json();
-
-  const descriptions = data.descriptions || [];
-  const assets = data.assets || [];
+  const { assets, descriptions } = await fetchFullSteamInventory(
+    currentUser.steam_id
+  );
 
   const items = assets.map((asset: any) => {
     const description = descriptions.find(
@@ -68,8 +95,17 @@ async function syncInventory() {
 
     if (error) {
       console.error(error);
+      revalidatePath("/inventory");
+      return;
     }
   }
+
+  await supabase
+    .from("users")
+    .update({
+      last_inventory_sync: new Date().toISOString(),
+    })
+    .eq("id", currentUser.id);
 
   revalidatePath("/inventory");
 }
@@ -122,6 +158,13 @@ export default async function InventoryPage() {
             <p className="mt-3 text-zinc-300">
               Real CS2 items imported from your Steam inventory.
             </p>
+
+            {currentUser.last_inventory_sync && (
+              <p className="mt-2 text-sm text-zinc-500">
+                Last synced:{" "}
+                {new Date(currentUser.last_inventory_sync).toLocaleString()}
+              </p>
+            )}
           </div>
 
           <form action={syncInventory}>
@@ -130,7 +173,7 @@ export default async function InventoryPage() {
             </button>
 
             <p className="mt-2 text-right text-sm text-zinc-400">
-              Inventory is already up to date.
+              Updates to your current Steam inventory.
             </p>
           </form>
         </div>

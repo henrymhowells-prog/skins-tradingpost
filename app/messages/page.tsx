@@ -43,6 +43,7 @@ async function sendMessage(formData: FormData) {
 
   revalidatePath("/messages");
   revalidatePath("/notifications");
+
   redirect(`/messages?user=${receiverId}`);
 }
 
@@ -61,7 +62,16 @@ async function openConversation(formData: FormData) {
     .eq("receiver_id", currentUser.id)
     .eq("read", false);
 
+  await supabase
+    .from("notifications")
+    .update({ read: true })
+    .eq("user_id", currentUser.id)
+    .eq("title", "New Message")
+    .eq("read", false);
+
   revalidatePath("/messages");
+  revalidatePath("/notifications");
+
   redirect(`/messages?user=${selectedUserId}`);
 }
 
@@ -125,6 +135,13 @@ export default async function MessagesPage({
       .update({ read: true })
       .eq("sender_id", selectedUserId)
       .eq("receiver_id", currentUser.id)
+      .eq("read", false);
+
+    await supabase
+      .from("notifications")
+      .update({ read: true })
+      .eq("user_id", currentUser.id)
+      .eq("title", "New Message")
       .eq("read", false);
   }
 
@@ -377,9 +394,7 @@ export default async function MessagesPage({
               <div className="flex min-h-[620px] items-center justify-center rounded-3xl border border-zinc-800 bg-zinc-950/80">
                 <div className="text-center">
                   <p className="text-5xl">💬</p>
-                  <h2 className="mt-4 text-2xl font-bold">
-                    Select a trader
-                  </h2>
+                  <h2 className="mt-4 text-2xl font-bold">Select a trader</h2>
                   <p className="mt-2 text-zinc-500">
                     Choose someone from the left to start messaging.
                   </p>

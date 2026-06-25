@@ -54,15 +54,32 @@ export default function HomePage() {
           <div className="h-2.5 flex-1 rounded-full bg-blue-800" />
         </div>
 
-        <a
-          href="/api/auth/steam/login"
-          className="mt-16 flex w-[420px] max-w-[90vw] items-center justify-center gap-4 rounded-xl bg-orange-500 px-8 py-5 text-2xl font-black italic text-black shadow-[7px_7px_0_rgba(0,0,0,0.8)] transition hover:-translate-y-0.5 hover:bg-orange-400"
-        >
-          <span className="flex h-12 w-12 items-center justify-center rounded-full bg-black text-2xl text-white">
-            <FaSteam />
-          </span>
-          Sign in with Steam
-        </a>
+        <div className="mt-16 flex flex-col items-center gap-5">
+  <a
+    href="/signup"
+    className="flex w-[420px] max-w-[90vw] items-center justify-center rounded-xl bg-orange-500 px-8 py-5 text-2xl font-black italic text-black shadow-[7px_7px_0_rgba(0,0,0,0.8)] transition hover:-translate-y-0.5 hover:bg-orange-400"
+  >
+    Create Account
+  </a>
+
+  <a
+    href="/api/auth/steam/login"
+    className="flex w-[420px] max-w-[90vw] items-center justify-center gap-4 rounded-xl border-2 border-orange-500 bg-zinc-900 px-8 py-5 text-2xl font-black italic text-white shadow-[7px_7px_0_rgba(0,0,0,0.8)] transition hover:bg-zinc-800"
+  >
+    <span className="flex h-12 w-12 items-center justify-center rounded-full bg-black text-2xl text-white">
+      <FaSteam />
+    </span>
+
+    Continue with Steam
+  </a>
+
+  <a
+    href="/login"
+    className="text-lg font-semibold text-zinc-300 hover:text-white"
+  >
+    Already have an account? Sign In
+  </a>
+</div>
 
         <div className="absolute bottom-10 flex items-center gap-9 rounded-full border border-blue-800 bg-zinc-950/95 px-12 py-5 shadow-[8px_8px_0_rgba(194,112,18,0.75)]">
           <a href="#" className="text-3xl text-pink-500 transition hover:scale-110">

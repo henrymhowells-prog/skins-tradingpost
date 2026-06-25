@@ -21,29 +21,18 @@ async function sendMessage(formData: FormData) {
     throw new Error("You must be signed in with Steam to send messages.");
   }
 
-  const { error: messageError } = await supabase.from("messages").insert({
+  const { error } = await supabase.from("messages").insert({
     sender_id: currentUser.id,
     receiver_id: receiverId,
     message,
     read: false,
   });
 
-  if (messageError) {
-    throw new Error(messageError.message);
+  if (error) {
+    throw new Error(error.message);
   }
 
-  await supabase.from("notifications").insert({
-    user_id: receiverId,
-    title: "New Message",
-    body: `${
-      currentUser.steam_name || currentUser.username || "A trader"
-    } sent you a message.`,
-    read: false,
-  });
-
   revalidatePath("/messages");
-  revalidatePath("/notifications");
-
   redirect(`/messages?user=${receiverId}`);
 }
 
@@ -62,16 +51,7 @@ async function openConversation(formData: FormData) {
     .eq("receiver_id", currentUser.id)
     .eq("read", false);
 
-  await supabase
-    .from("notifications")
-    .update({ read: true })
-    .eq("user_id", currentUser.id)
-    .eq("title", "New Message")
-    .eq("read", false);
-
   revalidatePath("/messages");
-  revalidatePath("/notifications");
-
   redirect(`/messages?user=${selectedUserId}`);
 }
 
@@ -135,13 +115,6 @@ export default async function MessagesPage({
       .update({ read: true })
       .eq("sender_id", selectedUserId)
       .eq("receiver_id", currentUser.id)
-      .eq("read", false);
-
-    await supabase
-      .from("notifications")
-      .update({ read: true })
-      .eq("user_id", currentUser.id)
-      .eq("title", "New Message")
       .eq("read", false);
   }
 

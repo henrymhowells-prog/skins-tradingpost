@@ -1,3 +1,5 @@
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import AppShell from "../components/AppShell";
 import { supabase } from "../lib/supabase";
 import { getCurrentUser } from "../lib/currentUser";
@@ -30,25 +32,47 @@ async function sendMessage(formData: FormData) {
     throw new Error(messageError.message);
   }
 
-  const { error: notificationError } = await supabase
-    .from("notifications")
-    .insert({
-      user_id: receiverId,
-      title: "New Message",
-      body: `${
-        currentUser.steam_name || currentUser.username || "A trader"
-      } sent you a message.`,
-      read: false,
-    });
+  const { error: notificationError } = await supabase.from("notifications").insert({
+    user_id: receiverId,
+    title: "New Message",
+    body: `${
+      currentUser.steam_name || currentUser.username || "A trader"
+    } sent you a message.`,
+    read: false,
+  });
 
   if (notificationError) {
     throw new Error(notificationError.message);
   }
+
+  revalidatePath("/messages");
+  revalidatePath("/notifications");
+  redirect(`/messages?user=${receiverId}`);
+}
+
+async function openConversation(formData: FormData) {
+  "use server";
+
+  const selectedUserId = String(formData.get("selected_user_id") || "");
+  const currentUser = await getCurrentUser();
+
+  if (!currentUser || !selectedUserId) return;
+
+  await supabase
+    .from("messages")
+    .update({ read: true })
+    .eq("sender_id", selectedUserId)
+    .eq("receiver_id", currentUser.id)
+    .eq("read", false);
+
+  revalidatePath("/messages");
+  revalidatePath("/notifications");
+  redirect(`/messages?user=${selectedUserId}`);
 }
 
 function PageBackground() {
   return (
-    <div className="fixed inset-y-0 left-64 right-0 z-0 overflow-hidden bg-[#121318]">
+    <div className="fixed inset-y-0 left-64 right-0 -z-0 overflow-hidden bg-[#121318]">
       <div
         className="absolute inset-0 opacity-40"
         style={{
@@ -162,15 +186,6 @@ export default async function MessagesPage({
     return bTime - aTime;
   });
 
-  if (selectedUserId) {
-    await supabase
-      .from("messages")
-      .update({ read: true })
-      .eq("sender_id", selectedUserId)
-      .eq("receiver_id", currentUser.id)
-      .eq("read", false);
-  }
-
   const selectedUser =
     (users || []).find((user) => user.id === selectedUserId) || null;
 
@@ -208,41 +223,50 @@ export default async function MessagesPage({
                     conversationStats.get(user.id)?.unreadCount || 0;
 
                   return (
-                    <a
-                      key={user.id}
-                      href={`/messages?user=${user.id}`}
-                      className={`flex items-center gap-3 rounded-2xl border p-3 transition ${
-                        user.id === selectedUserId
-                          ? "border-orange-500 bg-orange-500/10"
-                          : "border-zinc-800 bg-zinc-950/90 hover:border-orange-500"
-                      }`}
-                    >
-                      <img
-                        src={
-                          user.avatar_url ||
-                          user.steam_avatar ||
-                          "https://avatars.githubusercontent.com/u/9919?s=200&v=4"
-                        }
-                        alt={user.steam_name || user.username || "Trader"}
-                        className="h-11 w-11 rounded-full"
+                    <form key={user.id} action={openConversation}>
+                      <input
+                        type="hidden"
+                        name="selected_user_id"
+                        value={user.id}
                       />
 
-                      <div className="min-w-0">
-                        <p className="truncate font-bold">
-  {user.steam_name || user.username || "Unknown User"}
-</p>
+                      <button
+                        type="submit"
+                        className={`flex w-full items-center gap-3 rounded-2xl border p-3 text-left transition ${
+                          user.id === selectedUserId
+                            ? "border-orange-500 bg-orange-500/10"
+                            : "border-zinc-800 bg-zinc-950/90 hover:border-orange-500"
+                        }`}
+                      >
+                        <img
+                          src={
+                            user.avatar_url ||
+                            user.steam_avatar ||
+                            "https://avatars.githubusercontent.com/u/9919?s=200&v=4"
+                          }
+                          alt={user.steam_name || user.username || "Trader"}
+                          className="h-11 w-11 rounded-full"
+                        />
 
-                        <p className="text-xs text-zinc-500">
-                          ⭐ {user.average_rating || 0} ({user.review_count || 0})
-                        </p>
-                      </div>
+                        <div className="min-w-0">
+                          <p className="truncate font-bold">
+                            {user.steam_name ||
+                              user.username ||
+                              "Unknown User"}
+                          </p>
 
-                      {unreadCount > 0 && (
-                        <span className="ml-auto rounded-full bg-orange-500 px-2 py-0.5 text-xs font-bold text-black">
-                          {unreadCount}
-                        </span>
-                      )}
-                    </a>
+                          <p className="text-xs text-zinc-500">
+                            ⭐ {(user.average_rating ?? 5).toFixed(1)} / 5
+                          </p>
+                        </div>
+
+                        {unreadCount > 0 && (
+                          <span className="ml-auto rounded-full bg-orange-500 px-2 py-0.5 text-xs font-bold text-black">
+                            {unreadCount}
+                          </span>
+                        )}
+                      </button>
+                    </form>
                   );
                 })
               )}
@@ -253,32 +277,34 @@ export default async function MessagesPage({
             {selectedUser ? (
               <>
                 <div className="flex items-center gap-4 border-b border-zinc-800 pb-5">
-                  <img
-                    src={
-                      selectedUser.avatar_url ||
-                      selectedUser.steam_avatar ||
-                      "https://avatars.githubusercontent.com/u/9919?s=200&v=4"
-                    }
-                    alt={
-                      selectedUser.steam_name ||
-                      selectedUser.username ||
-                      "Trader"
-                    }
-                    className="h-16 w-16 rounded-full"
-                  />
+                  <a href={`/user/${selectedUser.id}`}>
+                    <img
+                      src={
+                        selectedUser.avatar_url ||
+                        selectedUser.steam_avatar ||
+                        "https://avatars.githubusercontent.com/u/9919?s=200&v=4"
+                      }
+                      alt={
+                        selectedUser.steam_name ||
+                        selectedUser.username ||
+                        "Trader"
+                      }
+                      className="h-16 w-16 rounded-full"
+                    />
+                  </a>
 
                   <div>
                     <a
-  href={`/user/${selectedUser.id}`}
-  className="text-3xl font-bold hover:text-orange-400"
->
-  {selectedUser.steam_name ||
-    selectedUser.username ||
-    "Unknown User"}
-</a>
+                      href={`/user/${selectedUser.id}`}
+                      className="text-3xl font-bold hover:text-orange-400"
+                    >
+                      {selectedUser.steam_name ||
+                        selectedUser.username ||
+                        "Unknown User"}
+                    </a>
+
                     <p className="mt-1 text-sm text-zinc-400">
-                      ⭐ {selectedUser.average_rating || 0} (
-                      {selectedUser.review_count || 0} reviews)
+                      ⭐ {(selectedUser.average_rating ?? 5).toFixed(1)} / 5
                     </p>
                   </div>
                 </div>

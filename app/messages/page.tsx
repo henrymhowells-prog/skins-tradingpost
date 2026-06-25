@@ -32,7 +32,7 @@ async function sendMessage(formData: FormData) {
     throw new Error(messageError.message);
   }
 
-  const { error: notificationError } = await supabase.from("notifications").insert({
+  await supabase.from("notifications").insert({
     user_id: receiverId,
     title: "New Message",
     body: `${
@@ -40,10 +40,6 @@ async function sendMessage(formData: FormData) {
     } sent you a message.`,
     read: false,
   });
-
-  if (notificationError) {
-    throw new Error(notificationError.message);
-  }
 
   revalidatePath("/messages");
   revalidatePath("/notifications");
@@ -66,7 +62,6 @@ async function openConversation(formData: FormData) {
     .eq("read", false);
 
   revalidatePath("/messages");
-  revalidatePath("/notifications");
   redirect(`/messages?user=${selectedUserId}`);
 }
 
@@ -122,6 +117,15 @@ export default async function MessagesPage({
         </div>
       </AppShell>
     );
+  }
+
+  if (selectedUserId) {
+    await supabase
+      .from("messages")
+      .update({ read: true })
+      .eq("sender_id", selectedUserId)
+      .eq("receiver_id", currentUser.id)
+      .eq("read", false);
   }
 
   const { data: allMessages } = await supabase
@@ -289,7 +293,7 @@ export default async function MessagesPage({
                         selectedUser.username ||
                         "Trader"
                       }
-                      className="h-16 w-16 rounded-full"
+                      className="h-16 w-16 rounded-full hover:ring-2 hover:ring-orange-500"
                     />
                   </a>
 

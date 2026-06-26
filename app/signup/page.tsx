@@ -15,9 +15,15 @@ async function signUp(formData: FormData) {
 
   const supabase = await createSupabaseServerClient();
 
+  const siteUrl =
+    process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
+    options: {
+      emailRedirectTo: `${siteUrl}/auth/callback?next=/dashboard`,
+    },
   });
 
   if (error) {
@@ -50,7 +56,7 @@ async function signUp(formData: FormData) {
     }
   }
 
-  redirect("/dashboard");
+  redirect(`/check-email?email=${encodeURIComponent(email)}`);
 }
 
 export default async function SignupPage({
@@ -113,15 +119,6 @@ export default async function SignupPage({
           className="mt-3 block text-center font-bold text-orange-400 hover:text-orange-300"
         >
           Sign In
-        </a>
-
-        <div className="my-6 border-t border-zinc-800" />
-
-        <a
-          href="/api/auth/steam/login"
-          className="block rounded-xl border border-orange-500 p-4 text-center font-bold text-orange-400 hover:bg-orange-500 hover:text-black"
-        >
-          Continue with Steam instead
         </a>
       </form>
     </main>

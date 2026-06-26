@@ -529,11 +529,7 @@ export default async function ListingsPage({
 
                         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                           {giving.map((item) => {
-                            const details = (inventoryItems || []).find(
-                              (inv) =>
-                                inv.id === item.inventory_item_id ||
-                                inv.item_name === item.item_name
-                            );
+                            const details = item;
 
                             return (
                               <TradeItemCard

@@ -76,16 +76,30 @@ const givePatternSeed = formData.getAll("give_pattern_seed");
   }
 
   if (giveItems.length > 0) {
+  const { data: giveItemDetails } = await supabase
+    .from("cs2_items")
+    .select("item_name, image_url, rarity, weapon_type")
+    .in("item_name", giveItems);
+
   await supabase.from("listing_offer_items").insert(
-    giveItems.map((item, index) => ({
-      listing_id: listing.id,
-      item_name: item,
-      float_min: giveFloatMin[index] ? Number(giveFloatMin[index]) : null,
-      float_max: giveFloatMax[index] ? Number(giveFloatMax[index]) : null,
-      pattern_seed: givePatternSeed[index]
-        ? Number(givePatternSeed[index])
-        : null,
-    }))
+    giveItems.map((item, index) => {
+      const details = (giveItemDetails || []).find(
+        (cs2Item) => cs2Item.item_name === item
+      );
+
+      return {
+        listing_id: listing.id,
+        item_name: item,
+        image_url: details?.image_url || null,
+        rarity: details?.rarity || null,
+        weapon_type: details?.weapon_type || null,
+        float_min: giveFloatMin[index] ? Number(giveFloatMin[index]) : null,
+        float_max: giveFloatMax[index] ? Number(giveFloatMax[index]) : null,
+        pattern_seed: givePatternSeed[index]
+          ? Number(givePatternSeed[index])
+          : null,
+      };
+    })
   );
 }
 

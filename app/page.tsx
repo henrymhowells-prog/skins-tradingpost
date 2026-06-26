@@ -1,4 +1,4 @@
-import { FaDiscord, FaInstagram, FaSteam } from "react-icons/fa";
+import { FaDiscord, FaInstagram } from "react-icons/fa";
 import { SiTiktok, SiX } from "react-icons/si";
 
 export default function HomePage() {
@@ -49,52 +49,61 @@ export default function HomePage() {
           </span>
         </h1>
 
+        <p className="mt-6 max-w-2xl text-center text-xl font-semibold text-zinc-300">
+           Trade CS2 skins with other players.
+        </p>
+
         <div className="mt-4 flex w-[610px] max-w-[68vw] items-center">
           <div className="h-0 w-0 border-y-[24px] border-r-[36px] border-y-transparent border-r-blue-800" />
           <div className="h-2.5 flex-1 rounded-full bg-blue-800" />
         </div>
 
-        <div className="mt-16 flex flex-col items-center gap-5">
-  <a
-    href="/signup"
-    className="flex w-[420px] max-w-[90vw] items-center justify-center rounded-xl bg-orange-500 px-8 py-5 text-2xl font-black italic text-black shadow-[7px_7px_0_rgba(0,0,0,0.8)] transition hover:-translate-y-0.5 hover:bg-orange-400"
-  >
-    Create Account
-  </a>
+        <div className="mt-16 flex w-[420px] max-w-[90vw] flex-col gap-5">
+          <a
+            href="/login"
+            className="flex items-center justify-center rounded-xl bg-orange-500 px-8 py-5 text-2xl font-black italic text-black shadow-[7px_7px_0_rgba(0,0,0,0.8)] transition hover:-translate-y-0.5 hover:bg-orange-400"
+          >
+            Sign In
+          </a>
 
-  <a
-    href="/api/auth/steam/login"
-    className="flex w-[420px] max-w-[90vw] items-center justify-center gap-4 rounded-xl border-2 border-orange-500 bg-zinc-900 px-8 py-5 text-2xl font-black italic text-white shadow-[7px_7px_0_rgba(0,0,0,0.8)] transition hover:bg-zinc-800"
-  >
-    <span className="flex h-12 w-12 items-center justify-center rounded-full bg-black text-2xl text-white">
-      <FaSteam />
-    </span>
+          <a
+            href="/signup"
+            className="flex items-center justify-center rounded-xl border-2 border-orange-500 bg-zinc-900 px-8 py-5 text-2xl font-black italic text-orange-400 shadow-[7px_7px_0_rgba(0,0,0,0.8)] transition hover:-translate-y-0.5 hover:bg-orange-500 hover:text-black"
+          >
+            Create Account
+          </a>
 
-    Continue with Steam
-  </a>
-
-  <a
-    href="/login"
-    className="text-lg font-semibold text-zinc-300 hover:text-white"
-  >
-    Already have an account? Sign In
-  </a>
-</div>
+          <p className="mt-3 text-center text-sm text-zinc-400">
+            Steam linking is optional and can be added later from Settings.
+          </p>
+        </div>
 
         <div className="absolute bottom-10 flex items-center gap-9 rounded-full border border-blue-800 bg-zinc-950/95 px-12 py-5 shadow-[8px_8px_0_rgba(194,112,18,0.75)]">
-          <a href="#" className="text-3xl text-pink-500 transition hover:scale-110">
+          <a
+            href="#"
+            className="text-3xl text-pink-500 transition hover:scale-110"
+          >
             <FaInstagram />
           </a>
 
-          <a href="#" className="text-3xl text-white transition hover:scale-110">
+          <a
+            href="#"
+            className="text-3xl text-white transition hover:scale-110"
+          >
             <SiTiktok />
           </a>
 
-          <a href="#" className="text-3xl text-indigo-500 transition hover:scale-110">
+          <a
+            href="#"
+            className="text-3xl text-indigo-500 transition hover:scale-110"
+          >
             <FaDiscord />
           </a>
 
-          <a href="#" className="text-3xl text-white transition hover:scale-110">
+          <a
+            href="#"
+            className="text-3xl text-white transition hover:scale-110"
+          >
             <SiX />
           </a>
         </div>

@@ -1,10 +1,11 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+
 import AppShell from "../components/AppShell";
-import ListingInventoryPicker from "../components/ListingInventoryPicker";
+import WantedItemPicker from "../components/WantedItemPicker";
+
 import { supabase } from "../lib/supabase";
 import { getCurrentUser } from "../lib/currentUser";
-
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
@@ -376,7 +377,7 @@ export default async function ListingsPage({
                 </label>
               </div>
 
-             <ListingItemSearchPicker namePrefix="give" color="orange" label="give" />
+             <WantedItemPicker mode="give" />
             </div>
 
             <div className="rounded-[32px] border border-zinc-800 bg-black/90 p-6">
@@ -391,7 +392,7 @@ export default async function ListingsPage({
                 </label>
               </div>
 
-              <ListingItemSearchPicker namePrefix="wanted" color="blue" label="wanted" />
+              <WantedItemPicker mode="wanted" />
             </div>
           </div>
 

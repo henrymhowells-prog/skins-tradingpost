@@ -270,20 +270,29 @@ export default async function TradeDetailsPage({
 
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {(offerItems || []).map((item) => {
-                const details = (inventoryItems || []).find(
-                  (inv) =>
-                    inv.id === item.inventory_item_id ||
-                    inv.item_name === item.item_name
-                );
+  const cs2Details = (cs2Items || []).find(
+    (cs2) => cs2.item_name === item.item_name
+  );
 
-                return (
-                  <TradeItemCard
-                    key={item.id}
-                    item={item}
-                    imageUrl={details?.image_url}
-                  />
-                );
-              })}
+  const inventoryDetails = (inventoryItems || []).find(
+    (inv) =>
+      inv.id === item.inventory_item_id ||
+      inv.item_name === item.item_name
+  );
+
+  return (
+    <TradeItemCard
+      key={item.id}
+      item={item}
+      imageUrl={
+        item.image_url ||
+        cs2Details?.image_url ||
+        inventoryDetails?.image_url ||
+        null
+      }
+    />
+  );
+})}
 
               {listing.give_item_overpay && <ItemOverpayCard side="orange" />}
 

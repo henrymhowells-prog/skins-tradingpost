@@ -468,7 +468,11 @@ export default async function SearchTradesPage({
                           <TradeItemCard
                             key={item.id}
                             item={item}
-                            imageUrl={details?.image_url}
+                            imageUrl={
+  item.image_url ||
+  details?.image_url ||
+  null
+}
                           />
                         );
                       })}
@@ -506,7 +510,11 @@ export default async function SearchTradesPage({
                           <TradeItemCard
                             key={item.id}
                             item={item}
-                            imageUrl={details?.image_url}
+                            imageUrl={
+  item.image_url ||
+  details?.image_url ||
+  null
+}
                           />
                         );
                       })}

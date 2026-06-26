@@ -2,7 +2,6 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import AppShell from "../components/AppShell";
 import ListingInventoryPicker from "../components/ListingInventoryPicker";
-import WantedItemPicker from "../components/WantedItemPicker";
 import { supabase } from "../lib/supabase";
 import { getCurrentUser } from "../lib/currentUser";
 
@@ -17,10 +16,14 @@ async function createListing(formData: FormData) {
   const giveItemOverpay = formData.get("give_item_overpay") === "on";
   const wantItemOverpay = formData.get("want_item_overpay") === "on";
 
-  const offerItemIds = formData
-    .getAll("offer_item_ids")
-    .map((id) => String(id).trim())
-    .filter(Boolean);
+  const giveItems = formData
+  .getAll("give_items")
+  .map((item) => String(item).trim())
+  .filter(Boolean);
+
+const giveFloatMin = formData.getAll("give_float_min");
+const giveFloatMax = formData.getAll("give_float_max");
+const givePatternSeed = formData.getAll("give_pattern_seed");
 
   const wantedItems = formData
     .getAll("wanted_items")
@@ -71,21 +74,19 @@ async function createListing(formData: FormData) {
     throw new Error(error?.message || "Failed to create listing");
   }
 
-  if (offerItemIds.length > 0) {
-    const { data: inventoryItems } = await supabase
-      .from("inventory_items")
-      .select("id, item_name")
-      .eq("user_id", currentUser.id)
-      .in("id", offerItemIds);
-
-    await supabase.from("listing_offer_items").insert(
-      (inventoryItems || []).map((item) => ({
-        listing_id: listing.id,
-        inventory_item_id: item.id,
-        item_name: item.item_name,
-      }))
-    );
-  }
+  if (giveItems.length > 0) {
+  await supabase.from("listing_offer_items").insert(
+    giveItems.map((item, index) => ({
+      listing_id: listing.id,
+      item_name: item,
+      float_min: giveFloatMin[index] ? Number(giveFloatMin[index]) : null,
+      float_max: giveFloatMax[index] ? Number(giveFloatMax[index]) : null,
+      pattern_seed: givePatternSeed[index]
+        ? Number(givePatternSeed[index])
+        : null,
+    }))
+  );
+}
 
   if (wantedItems.length > 0) {
     await supabase.from("listing_wanted_items").insert(
@@ -273,7 +274,7 @@ export default async function ListingsPage({
   if (!currentUser) {
     return (
       <AppShell>
-        <h1 className="text-4xl font-bold">Please sign in with Steam</h1>
+        <h1 className="text-4xl font-bold">Please sign in</h1>
       </AppShell>
     );
   }
@@ -375,7 +376,7 @@ export default async function ListingsPage({
                 </label>
               </div>
 
-              <ListingInventoryPicker items={inventoryItems || []} />
+             <ListingItemSearchPicker namePrefix="give" color="orange" label="give" />
             </div>
 
             <div className="rounded-[32px] border border-zinc-800 bg-black/90 p-6">
@@ -390,7 +391,7 @@ export default async function ListingsPage({
                 </label>
               </div>
 
-              <WantedItemPicker />
+              <ListingItemSearchPicker namePrefix="wanted" color="blue" label="wanted" />
             </div>
           </div>
 

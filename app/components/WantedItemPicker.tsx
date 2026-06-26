@@ -10,7 +10,7 @@ type CS2Item = {
   image_url: string | null;
 };
 
-type SelectedWantedItem = {
+type SelectedItem = {
   item_name: string;
   float_min: string;
   float_max: string;
@@ -18,13 +18,21 @@ type SelectedWantedItem = {
   advanced_open: boolean;
 };
 
-export default function WantedItemPicker() {
+export default function WantedItemPicker({
+  mode = "wanted",
+}: {
+  mode?: "give" | "wanted";
+}) {
   const [search, setSearch] = useState("");
   const [results, setResults] = useState<CS2Item[]>([]);
   const [loading, setLoading] = useState(false);
-  const [selectedItems, setSelectedItems] = useState<SelectedWantedItem[]>([]);
+  const [selectedItems, setSelectedItems] = useState<SelectedItem[]>([]);
 
   const cleanedSearch = search.trim();
+
+  const isGive = mode === "give";
+  const prefix = isGive ? "give" : "wanted";
+  const color = isGive ? "orange" : "blue";
 
   useEffect(() => {
     if (cleanedSearch.length < 2) {
@@ -90,16 +98,24 @@ export default function WantedItemPicker() {
     );
   }
 
+  const selectedClass = isGive
+    ? "border-orange-500 bg-orange-500/10"
+    : "border-blue-500 bg-blue-500/10";
+
+  const hoverClass = isGive ? "hover:border-orange-500" : "hover:border-blue-500";
+  const textClass = isGive ? "text-orange-400" : "text-blue-400";
+  const focusClass = isGive ? "focus:border-orange-500" : "focus:border-blue-500";
+
   return (
     <>
       {selectedItems.map((item) => (
         <div key={item.item_name}>
-          <input type="hidden" name="wanted_items" value={item.item_name} />
-          <input type="hidden" name="wanted_float_min" value={item.float_min} />
-          <input type="hidden" name="wanted_float_max" value={item.float_max} />
+          <input type="hidden" name={`${prefix}_items`} value={item.item_name} />
+          <input type="hidden" name={`${prefix}_float_min`} value={item.float_min} />
+          <input type="hidden" name={`${prefix}_float_max`} value={item.float_max} />
           <input
             type="hidden"
-            name="wanted_pattern_seed"
+            name={`${prefix}_pattern_seed`}
             value={item.pattern_seed}
           />
         </div>
@@ -109,11 +125,11 @@ export default function WantedItemPicker() {
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         placeholder="Search any CS2 item..."
-        className="mt-5 w-full rounded-xl border border-zinc-700 bg-zinc-900 px-4 py-3 outline-none focus:border-orange-500"
+        className={`mt-5 w-full rounded-xl border border-zinc-700 bg-zinc-900 px-4 py-3 outline-none ${focusClass}`}
       />
 
       <p className="mt-3 text-sm text-zinc-500">
-        {selectedItems.length}/10 wanted items selected
+        {selectedItems.length}/10 {isGive ? "give" : "wanted"} items selected
       </p>
 
       {selectedItems.length > 0 && (
@@ -121,7 +137,7 @@ export default function WantedItemPicker() {
           {selectedItems.map((item) => (
             <div
               key={item.item_name}
-              className="rounded-xl border border-blue-500/40 bg-blue-500/10 p-4"
+              className={`rounded-xl border p-4 ${selectedClass}`}
             >
               <div className="flex items-center justify-between gap-3">
                 <p className="font-bold">{item.item_name}</p>
@@ -144,7 +160,7 @@ export default function WantedItemPicker() {
                     !item.advanced_open
                   )
                 }
-                className="mt-3 text-sm text-blue-400 hover:text-blue-300"
+                className={`mt-3 text-sm ${textClass} hover:opacity-80`}
               >
                 {item.advanced_open
                   ? "Hide Advanced Options"
@@ -167,7 +183,7 @@ export default function WantedItemPicker() {
                       )
                     }
                     placeholder="Float min"
-                    className="rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm outline-none focus:border-blue-500"
+                    className={`rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm outline-none ${focusClass}`}
                   />
 
                   <input
@@ -184,7 +200,7 @@ export default function WantedItemPicker() {
                       )
                     }
                     placeholder="Float max"
-                    className="rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm outline-none focus:border-blue-500"
+                    className={`rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm outline-none ${focusClass}`}
                   />
 
                   <input
@@ -201,7 +217,7 @@ export default function WantedItemPicker() {
                       )
                     }
                     placeholder="Pattern"
-                    className="rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm outline-none focus:border-blue-500"
+                    className={`rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm outline-none ${focusClass}`}
                   />
                 </div>
               )}
@@ -233,8 +249,8 @@ export default function WantedItemPicker() {
                   onClick={() => toggleItem(item.item_name)}
                   className={`rounded-xl border p-3 text-left ${
                     selected
-                      ? "border-blue-500 bg-blue-500/10"
-                      : "border-zinc-800 bg-zinc-900 hover:border-blue-500"
+                      ? selectedClass
+                      : `border-zinc-800 bg-zinc-900 ${hoverClass}`
                   }`}
                 >
                   <div className="mb-3 flex h-24 items-center justify-center rounded-lg bg-zinc-800">

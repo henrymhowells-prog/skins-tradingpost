@@ -206,6 +206,44 @@ function ItemOverpayCard({ side }: { side: "orange" | "blue" }) {
   );
 }
 
+function OpenToOffersCard({ side }: { side: "orange" | "blue" }) {
+  return (
+    <div
+      className={`rounded-xl border p-3 ${
+        side === "orange"
+          ? "border-orange-500 bg-orange-500/10"
+          : "border-blue-500 bg-blue-500/10"
+      }`}
+    >
+      <div className="mb-3 flex h-24 items-center justify-center rounded-lg bg-zinc-800 text-3xl">
+        🤝
+      </div>
+
+      <p
+        className={`text-center text-sm font-bold ${
+          side === "orange" ? "text-orange-400" : "text-blue-400"
+        }`}
+      >
+        Open to Offers
+      </p>
+    </div>
+  );
+}
+
+function getSideItems({
+  searchSide,
+  giving,
+  wanting,
+}: {
+  searchSide: string;
+  giving: any[];
+  wanting: any[];
+}) {
+  if (searchSide === "give") return giving;
+  if (searchSide === "want") return wanting;
+  return [...giving, ...wanting];
+}
+
 export default async function SearchTradesPage({
   searchParams,
 }: {
@@ -214,6 +252,9 @@ export default async function SearchTradesPage({
     sort?: string;
     category?: string;
     rarity?: string;
+    side?: string;
+    stattrak?: string;
+    souvenir?: string;
   }>;
 }) {
   const params = searchParams ? await searchParams : {};
@@ -222,6 +263,9 @@ export default async function SearchTradesPage({
   const sort = params.sort || "newest";
   const category = params.category || "all";
   const rarity = params.rarity || "all";
+  const searchSide = params.side || "both";
+  const stattrak = params.stattrak || "all";
+  const souvenir = params.souvenir || "all";
   const nowIso = new Date().toISOString();
 
   const currentUser = await getCurrentUser();
@@ -276,8 +320,18 @@ export default async function SearchTradesPage({
       (item) => item.listing_id === listing.id
     );
 
+    const wanting = (wantedItems || []).filter(
+      (item) => item.listing_id === listing.id
+    );
+
+    const sideItems = getSideItems({
+      searchSide,
+      giving,
+      wanting,
+    });
+
     if (query) {
-      const matchesQuery = giving.some((item) =>
+      const matchesQuery = sideItems.some((item) =>
         item.item_name.toLowerCase().includes(query)
       );
 
@@ -285,7 +339,7 @@ export default async function SearchTradesPage({
     }
 
     if (category !== "all") {
-      const matchesCategory = giving.some(
+      const matchesCategory = sideItems.some(
         (item) => getItemCategory(item.item_name) === category
       );
 
@@ -293,17 +347,39 @@ export default async function SearchTradesPage({
     }
 
     if (rarity !== "all") {
-      const matchesRarity = giving.some((item) => {
+      const matchesRarity = sideItems.some((item) => {
         const details = (cs2Items || []).find(
           (cs2) => cs2.item_name === item.item_name
         );
 
-        return String(details?.rarity || "")
+        return String(item.rarity || details?.rarity || "")
           .toLowerCase()
           .includes(rarity.toLowerCase());
       });
 
       if (!matchesRarity) return false;
+    }
+
+    if (stattrak !== "all") {
+      const matchesStatTrak = sideItems.some((item) => {
+        const name = item.item_name.toLowerCase();
+        const isStatTrak = name.includes("stattrak");
+
+        return stattrak === "yes" ? isStatTrak : !isStatTrak;
+      });
+
+      if (!matchesStatTrak) return false;
+    }
+
+    if (souvenir !== "all") {
+      const matchesSouvenir = sideItems.some((item) => {
+        const name = item.item_name.toLowerCase();
+        const isSouvenir = name.includes("souvenir");
+
+        return souvenir === "yes" ? isSouvenir : !isSouvenir;
+      });
+
+      if (!matchesSouvenir) return false;
     }
 
     return true;
@@ -322,17 +398,28 @@ export default async function SearchTradesPage({
         </p>
 
         <form className="mt-8 rounded-3xl border border-zinc-800 bg-black/80 p-6 backdrop-blur">
-          <div className="grid gap-4 lg:grid-cols-4">
+          <div className="grid gap-4 lg:grid-cols-7">
             <div>
-              <label className="text-sm text-zinc-400">
-                Search Offered Item
-              </label>
+              <label className="text-sm text-zinc-400">Search Item</label>
               <input
                 name="q"
                 defaultValue={query}
                 placeholder="AK-47, Karambit, Case..."
                 className="mt-2 w-full rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-3 outline-none focus:border-orange-500"
               />
+            </div>
+
+            <div>
+              <label className="text-sm text-zinc-400">Search In</label>
+              <select
+                name="side"
+                defaultValue={searchSide}
+                className="mt-2 w-full rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-3 outline-none focus:border-orange-500"
+              >
+                <option value="both">Give & Want</option>
+                <option value="give">They Give</option>
+                <option value="want">They Want</option>
+              </select>
             </div>
 
             <div>
@@ -380,6 +467,32 @@ export default async function SearchTradesPage({
                 <option value="covert">Covert</option>
                 <option value="contraband">Contraband</option>
                 <option value="extraordinary">Extraordinary</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="text-sm text-zinc-400">StatTrak™</label>
+              <select
+                name="stattrak"
+                defaultValue={stattrak}
+                className="mt-2 w-full rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-3 outline-none focus:border-orange-500"
+              >
+                <option value="all">Any</option>
+                <option value="yes">StatTrak™ Only</option>
+                <option value="no">No StatTrak™</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="text-sm text-zinc-400">Souvenir</label>
+              <select
+                name="souvenir"
+                defaultValue={souvenir}
+                className="mt-2 w-full rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-3 outline-none focus:border-orange-500"
+              >
+                <option value="all">Any</option>
+                <option value="yes">Souvenir Only</option>
+                <option value="no">No Souvenir</option>
               </select>
             </div>
           </div>
@@ -458,7 +571,11 @@ export default async function SearchTradesPage({
 
                     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                       {giving.map((item) => {
-                        const details = (inventoryItems || []).find(
+                        const cs2Details = (cs2Items || []).find(
+                          (cs2) => cs2.item_name === item.item_name
+                        );
+
+                        const inventoryDetails = (inventoryItems || []).find(
                           (inv) =>
                             inv.id === item.inventory_item_id ||
                             inv.item_name === item.item_name
@@ -469,10 +586,11 @@ export default async function SearchTradesPage({
                             key={item.id}
                             item={item}
                             imageUrl={
-  item.image_url ||
-  details?.image_url ||
-  null
-}
+                              item.image_url ||
+                              cs2Details?.image_url ||
+                              inventoryDetails?.image_url ||
+                              null
+                            }
                           />
                         );
                       })}
@@ -480,6 +598,7 @@ export default async function SearchTradesPage({
                       {listing.give_item_overpay && (
                         <ItemOverpayCard side="orange" />
                       )}
+                      {listing.give_open_to_offers && <OpenToOffersCard side="orange" />}
                     </div>
                   </div>
 
@@ -510,11 +629,7 @@ export default async function SearchTradesPage({
                           <TradeItemCard
                             key={item.id}
                             item={item}
-                            imageUrl={
-  item.image_url ||
-  details?.image_url ||
-  null
-}
+                            imageUrl={item.image_url || details?.image_url || null}
                           />
                         );
                       })}

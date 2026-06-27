@@ -86,7 +86,7 @@ export default async function AppShell({
               href="/listings"
               className="block rounded-lg px-4 py-3 hover:bg-zinc-800"
             >
-              Listings
+              My Trades
             </a>
 
             <a
@@ -100,7 +100,7 @@ export default async function AppShell({
               href="/saved"
               className="block rounded-lg px-4 py-3 hover:bg-zinc-800"
             >
-              Saved Listings
+              Saved Trades
             </a>
 
             <a

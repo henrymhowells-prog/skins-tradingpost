@@ -54,6 +54,30 @@ function ItemOverpayCard({ side }: { side: "orange" | "blue" }) {
   );
 }
 
+function OpenToOffersCard({ side }: { side: "orange" | "blue" }) {
+  return (
+    <div
+      className={`rounded-xl border p-3 ${
+        side === "orange"
+          ? "border-orange-500 bg-orange-500/10"
+          : "border-blue-500 bg-blue-500/10"
+      }`}
+    >
+      <div className="mb-3 flex h-24 items-center justify-center rounded-lg bg-zinc-800 text-3xl">
+        🤝
+      </div>
+
+      <p
+        className={`text-center text-sm font-bold ${
+          side === "orange" ? "text-orange-400" : "text-blue-400"
+        }`}
+      >
+        Open to Offers
+      </p>
+    </div>
+  );
+}
+
 function TradeItemCard({
   item,
   imageUrl,
@@ -295,6 +319,7 @@ export default async function TradeDetailsPage({
 })}
 
               {listing.give_item_overpay && <ItemOverpayCard side="orange" />}
+              {listing.give_open_to_offers && <OpenToOffersCard side="orange" />}
 
               {(offerItems || []).length === 0 && !listing.give_item_overpay && (
                 <p className="text-zinc-500">No offered items listed.</p>
@@ -335,6 +360,7 @@ export default async function TradeDetailsPage({
               })}
 
               {listing.want_item_overpay && <ItemOverpayCard side="blue" />}
+              {listing.want_open_to_offers && <OpenToOffersCard side="blue" />}
 
               {(wantedItems || []).length === 0 && !listing.want_item_overpay && (
                 <p className="text-zinc-500">No wanted items listed.</p>

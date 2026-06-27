@@ -133,25 +133,25 @@ export default async function DashboardPage() {
 
             <div className="mt-8 flex flex-wrap gap-4">
               <a
-                href="/inventory"
-                className="rounded-full bg-orange-500 px-9 py-4 text-xl font-black text-white shadow-lg hover:bg-orange-400"
-              >
-                Inventory
-              </a>
+  href="/listings"
+  className="rounded-full bg-orange-500 px-9 py-4 text-xl font-black text-white shadow-lg hover:bg-orange-400"
+>
+  My Trades
+</a>
 
               <a
                 href="/listings"
                 className="rounded-full bg-orange-500 px-9 py-4 text-xl font-black text-white shadow-lg hover:bg-orange-400"
               >
-                Create listing
+                Create Trade
               </a>
 
               <a
-                href="/browse"
-                className="rounded-full bg-orange-500 px-9 py-4 text-xl font-black text-white shadow-lg hover:bg-orange-400"
-              >
-                Browse Trades
-              </a>
+  href="/search-trades"
+  className="rounded-full bg-orange-500 px-9 py-4 text-xl font-black text-white shadow-lg hover:bg-orange-400"
+>
+  Search Trades
+</a>
             </div>
           </div>
         </div>

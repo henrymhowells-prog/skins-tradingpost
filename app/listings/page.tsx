@@ -1,11 +1,10 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-
 import AppShell from "../components/AppShell";
 import WantedItemPicker from "../components/WantedItemPicker";
-
 import { supabase } from "../lib/supabase";
 import { getCurrentUser } from "../lib/currentUser";
+
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
@@ -17,14 +16,17 @@ async function createListing(formData: FormData) {
   const giveItemOverpay = formData.get("give_item_overpay") === "on";
   const wantItemOverpay = formData.get("want_item_overpay") === "on";
 
-  const giveItems = formData
-  .getAll("give_items")
-  .map((item) => String(item).trim())
-  .filter(Boolean);
+  const giveOpenToOffers = formData.get("give_open_to_offers") === "on";
+  const wantOpenToOffers = formData.get("want_open_to_offers") === "on";
 
-const giveFloatMin = formData.getAll("give_float_min");
-const giveFloatMax = formData.getAll("give_float_max");
-const givePatternSeed = formData.getAll("give_pattern_seed");
+  const giveItems = formData
+    .getAll("give_items")
+    .map((item) => String(item).trim())
+    .filter(Boolean);
+
+  const giveFloatMin = formData.getAll("give_float_min");
+  const giveFloatMax = formData.getAll("give_float_max");
+  const givePatternSeed = formData.getAll("give_pattern_seed");
 
   const wantedItems = formData
     .getAll("wanted_items")
@@ -38,7 +40,7 @@ const givePatternSeed = formData.getAll("give_pattern_seed");
   const currentUser = await getCurrentUser();
 
   if (!currentUser) {
-    throw new Error("You must be signed in with Steam to create a listing.");
+    throw new Error("You must be signed in to create a listing.");
   }
 
   const now = new Date();
@@ -64,6 +66,8 @@ const givePatternSeed = formData.getAll("give_pattern_seed");
       status: "active",
       give_item_overpay: giveItemOverpay,
       want_item_overpay: wantItemOverpay,
+      give_open_to_offers: giveOpenToOffers,
+      want_open_to_offers: wantOpenToOffers,
       refreshed_at: now.toISOString(),
       expires_at: expiresAt.toISOString(),
       last_refresh_at: null,
@@ -76,32 +80,32 @@ const givePatternSeed = formData.getAll("give_pattern_seed");
   }
 
   if (giveItems.length > 0) {
-  const { data: giveItemDetails } = await supabase
-    .from("cs2_items")
-    .select("item_name, image_url, rarity, weapon_type")
-    .in("item_name", giveItems);
+    const { data: giveItemDetails } = await supabase
+      .from("cs2_items")
+      .select("item_name, image_url, rarity, weapon_type")
+      .in("item_name", giveItems);
 
-  await supabase.from("listing_offer_items").insert(
-    giveItems.map((item, index) => {
-      const details = (giveItemDetails || []).find(
-        (cs2Item) => cs2Item.item_name === item
-      );
+    await supabase.from("listing_offer_items").insert(
+      giveItems.map((item, index) => {
+        const details = (giveItemDetails || []).find(
+          (cs2Item) => cs2Item.item_name === item
+        );
 
-      return {
-        listing_id: listing.id,
-        item_name: item,
-        image_url: details?.image_url || null,
-        rarity: details?.rarity || null,
-        weapon_type: details?.weapon_type || null,
-        float_min: giveFloatMin[index] ? Number(giveFloatMin[index]) : null,
-        float_max: giveFloatMax[index] ? Number(giveFloatMax[index]) : null,
-        pattern_seed: givePatternSeed[index]
-          ? Number(givePatternSeed[index])
-          : null,
-      };
-    })
-  );
-}
+        return {
+          listing_id: listing.id,
+          item_name: item,
+          image_url: details?.image_url || null,
+          rarity: details?.rarity || null,
+          weapon_type: details?.weapon_type || null,
+          float_min: giveFloatMin[index] ? Number(giveFloatMin[index]) : null,
+          float_max: giveFloatMax[index] ? Number(giveFloatMax[index]) : null,
+          pattern_seed: givePatternSeed[index]
+            ? Number(givePatternSeed[index])
+            : null,
+        };
+      })
+    );
+  }
 
   if (wantedItems.length > 0) {
     await supabase.from("listing_wanted_items").insert(
@@ -241,6 +245,30 @@ function ItemOverpayCard({ side }: { side: "orange" | "blue" }) {
   );
 }
 
+function OpenToOffersCard({ side }: { side: "orange" | "blue" }) {
+  return (
+    <div
+      className={`rounded-xl border p-3 ${
+        side === "orange"
+          ? "border-orange-500 bg-orange-500/10"
+          : "border-blue-500 bg-blue-500/10"
+      }`}
+    >
+      <div className="mb-3 flex h-24 items-center justify-center rounded-lg bg-zinc-800 text-3xl">
+        🤝
+      </div>
+
+      <p
+        className={`text-center text-sm font-bold ${
+          side === "orange" ? "text-orange-400" : "text-blue-400"
+        }`}
+      >
+        Open to Offers
+      </p>
+    </div>
+  );
+}
+
 function TradeItemCard({
   item,
   imageUrl,
@@ -296,12 +324,6 @@ export default async function ListingsPage({
 
   const nowIso = new Date().toISOString();
 
-  const { data: inventoryItems } = await supabase
-    .from("inventory_items")
-    .select("id, item_name, image_url, inspect_link, tradable")
-    .eq("user_id", currentUser.id)
-    .order("item_name");
-
   const { data: listings } = await supabase
     .from("listings")
     .select("*")
@@ -327,16 +349,20 @@ export default async function ListingsPage({
           .in("listing_id", listingIds)
       : { data: [] };
 
-  const wantedNames = Array.from(
-    new Set((wantedItems || []).map((item) => item.item_name).filter(Boolean))
+  const itemNames = Array.from(
+    new Set(
+      [...(wantedItems || []), ...(offerItems || [])]
+        .map((item) => item.item_name)
+        .filter(Boolean)
+    )
   );
 
   const { data: cs2Items } =
-    wantedNames.length > 0
+    itemNames.length > 0
       ? await supabase
           .from("cs2_items")
           .select("item_name, image_url, weapon_type, rarity")
-          .in("item_name", wantedNames)
+          .in("item_name", itemNames)
       : { data: [] };
 
   return (
@@ -344,7 +370,7 @@ export default async function ListingsPage({
       <PageBackground />
 
       <div className="relative z-10">
-        <h1 className="text-5xl font-bold">My Listings</h1>
+        <h1 className="text-5xl font-bold">My Trades</h1>
 
         {showSuccess && (
           <div className="mt-4 rounded-2xl border border-green-500 bg-green-500/10 p-4 text-green-400">
@@ -366,10 +392,10 @@ export default async function ListingsPage({
           action={createListing}
           className="mt-8 rounded-3xl border border-zinc-800 bg-black/75 p-8 backdrop-blur"
         >
-          <h2 className="text-2xl font-bold">Create Listing</h2>
+          <h2 className="text-2xl font-bold">Create Trade</h2>
 
           <div className="mt-6">
-            <label className="text-sm text-zinc-400">Listing Title</label>
+            <label className="text-sm text-zinc-400">Trade Title</label>
             <input
               name="title"
               required
@@ -385,13 +411,20 @@ export default async function ListingsPage({
                   You Give
                 </h3>
 
-                <label className="flex items-center gap-2 rounded-xl border border-orange-500/40 bg-orange-500/10 px-3 py-2 text-sm text-orange-300">
-                  <input type="checkbox" name="give_item_overpay" />
-                  Item Overpay
-                </label>
+                <div className="flex flex-wrap gap-2">
+                  <label className="flex items-center gap-2 rounded-xl border border-orange-500/40 bg-orange-500/10 px-3 py-2 text-sm text-orange-300">
+                    <input type="checkbox" name="give_item_overpay" />
+                    Item Overpay
+                  </label>
+
+                  <label className="flex items-center gap-2 rounded-xl border border-orange-500/40 bg-orange-500/10 px-3 py-2 text-sm text-orange-300">
+                    <input type="checkbox" name="give_open_to_offers" />
+                    Open to Offers
+                  </label>
+                </div>
               </div>
 
-             <WantedItemPicker mode="give" />
+              <WantedItemPicker mode="give" />
             </div>
 
             <div className="rounded-[32px] border border-zinc-800 bg-black/90 p-6">
@@ -400,10 +433,17 @@ export default async function ListingsPage({
                   You Want
                 </h3>
 
-                <label className="flex items-center gap-2 rounded-xl border border-blue-500/40 bg-blue-500/10 px-3 py-2 text-sm text-blue-300">
-                  <input type="checkbox" name="want_item_overpay" />
-                  Item Overpay
-                </label>
+                <div className="flex flex-wrap gap-2">
+                  <label className="flex items-center gap-2 rounded-xl border border-blue-500/40 bg-blue-500/10 px-3 py-2 text-sm text-blue-300">
+                    <input type="checkbox" name="want_item_overpay" />
+                    Item Overpay
+                  </label>
+
+                  <label className="flex items-center gap-2 rounded-xl border border-blue-500/40 bg-blue-500/10 px-3 py-2 text-sm text-blue-300">
+                    <input type="checkbox" name="want_open_to_offers" />
+                    Open to Offers
+                  </label>
+                </div>
               </div>
 
               <WantedItemPicker mode="wanted" />
@@ -411,17 +451,17 @@ export default async function ListingsPage({
           </div>
 
           <button className="mt-6 rounded-xl bg-orange-500 px-6 py-3 font-semibold text-black hover:bg-orange-400">
-            Create Listing
+            Create Trade
           </button>
         </form>
 
         <div className="mt-10">
-          <h2 className="text-3xl font-bold">Active Listings</h2>
+          <h2 className="text-3xl font-bold">Active Trades</h2>
 
           <div className="mt-5 grid gap-8">
             {(listings || []).length === 0 ? (
               <div className="rounded-3xl border border-zinc-800 bg-black/80 p-8 text-zinc-500 backdrop-blur">
-                You have no active listings yet.
+                You have no active trades yet.
               </div>
             ) : (
               (listings || []).map((listing) => {
@@ -529,19 +569,25 @@ export default async function ListingsPage({
 
                         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                           {giving.map((item) => {
-                            const details = item;
+                            const details = (cs2Items || []).find(
+                              (cs2) => cs2.item_name === item.item_name
+                            );
 
                             return (
                               <TradeItemCard
                                 key={item.id}
                                 item={item}
-                                imageUrl={details?.image_url}
+                                imageUrl={item.image_url || details?.image_url}
                               />
                             );
                           })}
 
                           {listing.give_item_overpay && (
                             <ItemOverpayCard side="orange" />
+                          )}
+
+                          {listing.give_open_to_offers && (
+                            <OpenToOffersCard side="orange" />
                           )}
                         </div>
                       </div>
@@ -580,6 +626,10 @@ export default async function ListingsPage({
 
                           {listing.want_item_overpay && (
                             <ItemOverpayCard side="blue" />
+                          )}
+
+                          {listing.want_open_to_offers && (
+                            <OpenToOffersCard side="blue" />
                           )}
                         </div>
                       </div>

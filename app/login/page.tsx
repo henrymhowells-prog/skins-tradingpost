@@ -51,11 +51,21 @@ export default async function LoginPage({
 
         <input
           name="password"
-          className="mb-6 w-full rounded-xl border border-zinc-700 bg-zinc-950 p-4 text-white"
+          className="mb-4 w-full rounded-xl border border-zinc-700 bg-zinc-950 p-4 text-white"
           placeholder="Password"
           type="password"
           required
         />
+
+        <label className="mb-6 flex items-center gap-3 text-sm text-zinc-300">
+          <input
+            type="checkbox"
+            name="remember"
+            defaultChecked
+            className="h-4 w-4 accent-orange-500"
+          />
+          Remember me on this device
+        </label>
 
         {error && (
           <p className="mb-4 rounded-lg bg-red-900/40 p-3 text-red-300">
@@ -76,15 +86,6 @@ export default async function LoginPage({
           className="mt-3 block text-center font-bold text-orange-400 hover:text-orange-300"
         >
           Create Account
-        </a>
-
-        <div className="my-6 border-t border-zinc-800" />
-
-        <a
-          href="/api/auth/steam/login"
-          className="block rounded-xl border border-orange-500 p-4 text-center font-bold text-orange-400 hover:bg-orange-500 hover:text-black"
-        >
-          Continue with Steam instead
         </a>
       </form>
     </main>

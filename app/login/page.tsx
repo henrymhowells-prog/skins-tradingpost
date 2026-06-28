@@ -4,7 +4,9 @@ import { createSupabaseServerClient } from "../lib/supabaseServer";
 async function login(formData: FormData) {
   "use server";
 
-  const email = String(formData.get("email") || "").trim().toLowerCase();
+  const email = String(formData.get("email") || "")
+    .trim()
+    .toLowerCase();
   const password = String(formData.get("password") || "");
 
   if (!email || !password) return;
@@ -43,19 +45,30 @@ export default async function LoginPage({
 
         <input
           name="email"
-          className="mb-4 w-full rounded-xl border border-zinc-700 bg-zinc-950 p-4 text-white"
-          placeholder="Email"
           type="email"
+          autoComplete="email"
+          className="mb-4 w-full rounded-xl border border-zinc-700 bg-zinc-950 p-4 text-white outline-none focus:border-orange-500"
+          placeholder="Email"
           required
         />
 
         <input
           name="password"
-          className="mb-4 w-full rounded-xl border border-zinc-700 bg-zinc-950 p-4 text-white"
-          placeholder="Password"
           type="password"
+          autoComplete="current-password"
+          className="mb-4 w-full rounded-xl border border-zinc-700 bg-zinc-950 p-4 text-white outline-none focus:border-orange-500"
+          placeholder="Password"
           required
         />
+
+        <div className="mb-6 text-right">
+  <a
+    href="/forgot-password"
+    className="text-sm text-orange-400 hover:text-orange-300"
+  >
+    Forgot Password?
+  </a>
+</div>
 
         <label className="mb-6 flex items-center gap-3 text-sm text-zinc-300">
           <input
@@ -73,7 +86,7 @@ export default async function LoginPage({
           </p>
         )}
 
-        <button className="w-full rounded-xl bg-orange-500 p-4 font-bold text-black hover:bg-orange-400">
+        <button className="w-full rounded-xl bg-orange-500 p-4 font-bold text-black transition hover:bg-orange-400">
           Sign In
         </button>
 

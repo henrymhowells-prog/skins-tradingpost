@@ -1,4 +1,5 @@
 import AppShell from "../components/AppShell";
+import DashboardHowItWorks from "../components/DashboardHowItWorks";
 import { supabase } from "../lib/supabase";
 import { getCurrentUser } from "../lib/currentUser";
 
@@ -127,17 +128,17 @@ export default async function DashboardPage() {
 
           <div className="rounded-[32px] border border-zinc-800 bg-black/80 p-8 backdrop-blur">
             <h2 className="max-w-4xl text-3xl font-black text-zinc-200">
-              Manage your inventory, refresh active listings and find new CS2
-              trade opportunities.
+              Manage your trades, refresh active listings and find new CS2 trade
+              opportunities.
             </h2>
 
             <div className="mt-8 flex flex-wrap gap-4">
               <a
-  href="/listings"
-  className="rounded-full bg-orange-500 px-9 py-4 text-xl font-black text-white shadow-lg hover:bg-orange-400"
->
-  My Trades
-</a>
+                href="/listings"
+                className="rounded-full bg-orange-500 px-9 py-4 text-xl font-black text-white shadow-lg hover:bg-orange-400"
+              >
+                My Trades
+              </a>
 
               <a
                 href="/listings"
@@ -147,11 +148,11 @@ export default async function DashboardPage() {
               </a>
 
               <a
-  href="/search-trades"
-  className="rounded-full bg-orange-500 px-9 py-4 text-xl font-black text-white shadow-lg hover:bg-orange-400"
->
-  Search Trades
-</a>
+                href="/search-trades"
+                className="rounded-full bg-orange-500 px-9 py-4 text-xl font-black text-white shadow-lg hover:bg-orange-400"
+              >
+                Search Trades
+              </a>
             </div>
           </div>
         </div>
@@ -186,23 +187,8 @@ export default async function DashboardPage() {
             )}
           </Panel>
 
-          <Panel title="NEWS" type="news">
-            <div className="grid gap-3">
-              <NewsCard
-                title="Listings now refresh to the top"
-                text="Refresh each trade every 15 minutes to keep it visible to other traders."
-              />
-
-              <NewsCard
-                title="Trades expire after 7 days"
-                text="Old listings are automatically hidden unless refreshed."
-              />
-
-              <NewsCard
-                title="Trade safely"
-                text="Always check Steam profiles, inspect items, and avoid suspicious offers."
-              />
-            </div>
+          <Panel title="HOW IT WORKS" type="news">
+            <DashboardHowItWorks />
           </Panel>
         </div>
       </div>
@@ -281,15 +267,6 @@ function NewsIcon() {
       <line x1="8" y1="16" x2="14" y2="16" />
       <rect x="5" y="7" width="2" height="8" />
     </svg>
-  );
-}
-
-function NewsCard({ title, text }: { title: string; text: string }) {
-  return (
-    <div className="rounded-2xl border border-zinc-800 bg-zinc-950/90 p-4">
-      <p className="font-bold text-white">{title}</p>
-      <p className="mt-1 text-sm text-zinc-500">{text}</p>
-    </div>
   );
 }
 

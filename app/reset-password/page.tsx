@@ -1,20 +1,47 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createSupabaseBrowserClient } from "../lib/supabaseBrowser";
 
 const supabase = createSupabaseBrowserClient();
 
 export default function ResetPasswordPage() {
+  const [ready, setReady] = useState(false);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
 
+  useEffect(() => {
+    async function loadSessionFromUrl() {
+      const hash = window.location.hash;
+
+      if (hash) {
+        const params = new URLSearchParams(hash.replace("#", ""));
+        const accessToken = params.get("access_token");
+        const refreshToken = params.get("refresh_token");
+
+        if (accessToken && refreshToken) {
+          const { error } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          });
+
+          if (error) {
+            setError(error.message);
+          }
+        }
+      }
+
+      setReady(true);
+    }
+
+    loadSessionFromUrl();
+  }, []);
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-
     setError("");
 
     if (password.length < 6) {
@@ -36,6 +63,7 @@ export default function ResetPasswordPage() {
       return;
     }
 
+    await supabase.auth.signOut();
     setSuccess(true);
   }
 
@@ -46,10 +74,14 @@ export default function ResetPasswordPage() {
           New Password
         </h1>
 
-        {success ? (
+        {!ready ? (
+          <p className="mt-8 text-center text-zinc-400">
+            Checking reset link...
+          </p>
+        ) : success ? (
           <div className="mt-8 text-center">
             <div className="rounded-xl border border-green-500 bg-green-500/10 p-5 text-green-300">
-              Your password has been updated.
+              Your password has been updated. Please sign in again.
             </div>
 
             <a
@@ -67,6 +99,7 @@ export default function ResetPasswordPage() {
               placeholder="New password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              autoComplete="new-password"
               className="mt-8 w-full rounded-xl border border-zinc-700 bg-zinc-950 p-4 text-white outline-none focus:border-orange-500"
             />
 
@@ -76,6 +109,7 @@ export default function ResetPasswordPage() {
               placeholder="Confirm new password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
+              autoComplete="new-password"
               className="mt-4 w-full rounded-xl border border-zinc-700 bg-zinc-950 p-4 text-white outline-none focus:border-orange-500"
             />
 

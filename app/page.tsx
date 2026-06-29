@@ -50,7 +50,7 @@ export default function HomePage() {
         </h1>
 
         <p className="mt-6 max-w-2xl text-center text-xl font-semibold text-zinc-300">
-           Trade CS2 skins with other players.
+          Trade CS2 skins with other players.
         </p>
 
         <div className="mt-4 flex w-[610px] max-w-[68vw] items-center">
@@ -73,7 +73,17 @@ export default function HomePage() {
             Create Account
           </a>
 
-          <p className="mt-3 text-center text-sm text-zinc-400">
+          <a href="/search-trades" className="mt-1 block text-center transition group">
+            <p className="text-sm font-semibold text-zinc-300 group-hover:text-orange-400">
+              Continue as Guest
+            </p>
+
+            <p className="mt-1 text-xs text-zinc-500 group-hover:text-zinc-400">
+              Browse trades without creating an account →
+            </p>
+          </a>
+
+          <p className="mt-2 text-center text-sm text-zinc-400">
             Steam linking is optional and can be added later from Settings.
           </p>
         </div>

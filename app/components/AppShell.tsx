@@ -10,6 +10,7 @@ const mainNavItems = [
   { href: "/profile", label: "Profile" },
   { href: "/reviews", label: "Reviews" },
   { href: "/settings", label: "Settings" },
+  { href: "/about", label: "About" },
 ];
 
 export default async function AppShell({

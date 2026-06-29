@@ -200,7 +200,7 @@ export default async function MessagesPage({
                   return (
                     <a
                       key={user.id}
-                      href={`/messages?user=${user.id}`}
+                      href={`/messages/open?user=${user.id}`}
                       className={`flex w-full items-center gap-3 rounded-2xl border p-3 text-left transition ${
                         user.id === selectedUserId
                           ? "border-orange-500 bg-orange-500/10"

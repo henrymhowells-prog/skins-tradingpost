@@ -31,9 +31,7 @@ export default async function DashboardPage() {
   if (!currentUser) {
     return (
       <AppShell>
-        <div className="pointer-events-none fixed inset-y-0 left-64 right-0 z-0 overflow-hidden">
-          <PageBackground leftOffset={256} />
-        </div>
+        <PageBackground leftOffset={256} />
 
         <div className="relative z-10">
           <h1 className="text-5xl font-bold">Skins TradingPost</h1>
@@ -82,9 +80,7 @@ export default async function DashboardPage() {
 
   return (
     <AppShell>
-      <div className="pointer-events-none fixed inset-y-0 left-64 right-0 z-0 overflow-hidden">
-        <PageBackground leftOffset={256} />
-      </div>
+      <PageBackground leftOffset={256} />
 
       <div className="relative z-10 -mt-4">
         <div className="mb-6 w-fit">
@@ -184,9 +180,9 @@ export default async function DashboardPage() {
           </Panel>
         </div>
 
-        <div className="-mx-8 mt-8 w-[calc(100%+4rem)] bg-black/30">
-          <SiteFooter />
-        </div>
+        <div className="-mx-8 mt-8 w-[calc(100%+4rem)]">
+  <SiteFooter />
+</div>
       </div>
     </AppShell>
   );

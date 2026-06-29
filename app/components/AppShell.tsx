@@ -49,15 +49,15 @@ unreadMessageCount = messagesCount || 0;
       <div className="flex">
         <aside className="hidden min-h-screen w-64 shrink-0 border-r border-white/10 bg-black/80 p-5 backdrop-blur-xl md:block">
           <a
-            href="/dashboard"
-            className="block rounded-2xl border border-white/10 bg-zinc-950/70 p-5 shadow-xl shadow-black/40"
-          >
-            <span className="block text-[2rem] font-black leading-[1.05] tracking-tight text-white">
-              Skins
-              <br />
-              TradingPost
-            </span>
-          </a>
+  href="/dashboard"
+  className="block rounded-2xl border border-white/15 bg-zinc-950/70 px-8 py-5"
+>
+  <span className="block text-[1.85rem] font-black leading-[1.05] tracking-tight">
+    Skins
+    <br />
+    TradingPost
+  </span>
+</a>
 
           <nav className="mt-14 space-y-3">
             <SidebarLink href="/dashboard" label="Dashboard" />

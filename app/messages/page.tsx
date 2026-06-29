@@ -1,9 +1,13 @@
-import AppShell from "../components/AppShell";
-import PageBackground from "../components/PageBackground";
-import { supabase } from "../lib/supabase";
-import { getCurrentUser } from "../lib/currentUser";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import AppShell from "../components/AppShell";
+import PageBackground from "../components/PageBackground";
+import ScrollToBottom from "../components/ScrollToBottom";
+import { supabase } from "../lib/supabase";
+import { getCurrentUser } from "../lib/currentUser";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 async function sendMessage(formData: FormData) {
   "use server";
@@ -33,9 +37,6 @@ async function sendMessage(formData: FormData) {
   revalidatePath("/messages");
   redirect(`/messages?user=${receiverId}`);
 }
-
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
 
 export default async function MessagesPage({
   searchParams,
@@ -148,6 +149,13 @@ export default async function MessagesPage({
   return (
     <AppShell>
       <PageBackground leftOffset={256} />
+
+      {selectedUser && (
+        <meta
+          httpEquiv="refresh"
+          content={`5;url=/messages?user=${selectedUser.id}`}
+        />
+      )}
 
       <div className="relative z-10">
         <div className="mb-6 w-fit">
@@ -283,59 +291,70 @@ export default async function MessagesPage({
                   </div>
                 </div>
 
-                <div className="mt-6 max-h-[560px] min-h-[460px] space-y-4 overflow-y-auto pr-2">
-  {(messages || []).length === 0 ? (
-    <div className="flex min-h-[420px] items-center justify-center rounded-3xl border border-zinc-800 bg-zinc-950/80 text-zinc-500">
-      No messages yet. Start the conversation.
-    </div>
-  ) : (
-    messages?.map((msg) => {
-      const mine = msg.sender_id === currentUser.id;
+                <div
+                  id="messages-scroll-box"
+                  className="mt-6 max-h-[560px] min-h-[460px] space-y-4 overflow-y-auto pr-2"
+                >
+                  <ScrollToBottom />
 
-      return (
-        <div
-          key={msg.id}
-          className={`flex ${mine ? "justify-end" : "justify-start"}`}
-        >
-          <div
-            className={`max-w-[70%] rounded-2xl px-5 py-3 shadow ${
-              mine
-                ? "bg-orange-500 text-black"
-                : "bg-zinc-800 text-white"
-            }`}
-          >
-            <p>{msg.message}</p>
+                  {(messages || []).length === 0 ? (
+                    <div className="flex min-h-[420px] items-center justify-center rounded-3xl border border-zinc-800 bg-zinc-950/80 text-zinc-500">
+                      No messages yet. Start the conversation.
+                    </div>
+                  ) : (
+                    messages?.map((msg) => {
+                      const mine = msg.sender_id === currentUser.id;
 
-            {msg.created_at && (
-              <p
-                className={`mt-2 text-xs ${
-                  mine ? "text-black/60" : "text-zinc-500"
-                }`}
-              >
-                {new Date(msg.created_at).toLocaleString()}
-              </p>
-            )}
-          </div>
-        </div>
-      );
-    })
-  )}
-</div>
+                      return (
+                        <div
+                          key={msg.id}
+                          className={`flex ${
+                            mine ? "justify-end" : "justify-start"
+                          }`}
+                        >
+                          <div
+                            className={`max-w-[70%] rounded-2xl px-5 py-3 shadow ${
+                              mine
+                                ? "bg-orange-500 text-black"
+                                : "bg-zinc-800 text-white"
+                            }`}
+                          >
+                            <p>{msg.message}</p>
 
-<form action={sendMessage} className="mt-6 flex gap-3">
-  <input type="hidden" name="receiver_id" value={selectedUser.id} />
+                            {msg.created_at && (
+                              <p
+                                className={`mt-2 text-xs ${
+                                  mine ? "text-black/60" : "text-zinc-500"
+                                }`}
+                              >
+                                {new Date(msg.created_at).toLocaleString()}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
 
-  <input
-    name="message"
-    required
-    placeholder="Type your message..."
-    className="flex-1 rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-3 outline-none focus:border-orange-500"
-  />
+                <form action={sendMessage} className="mt-6 flex gap-3">
+                  <input
+                    type="hidden"
+                    name="receiver_id"
+                    value={selectedUser.id}
+                  />
 
-  <button className="rounded-xl bg-orange-500 px-6 py-3 font-bold text-black hover:bg-orange-400">
-    Send
-  </button>
-</form>
+                  <input
+                    name="message"
+                    required
+                    placeholder="Type your message..."
+                    className="flex-1 rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-3 outline-none focus:border-orange-500"
+                  />
+
+                  <button className="rounded-xl bg-orange-500 px-6 py-3 font-bold text-black hover:bg-orange-400">
+                    Send
+                  </button>
+                </form>
               </>
             ) : (
               <div className="flex min-h-[620px] items-center justify-center rounded-3xl border border-zinc-800 bg-zinc-950/80">

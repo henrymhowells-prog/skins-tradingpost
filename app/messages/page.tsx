@@ -1,8 +1,38 @@
 import AppShell from "../components/AppShell";
 import PageBackground from "../components/PageBackground";
-import LiveChatBox from "../components/LiveChatBox";
 import { supabase } from "../lib/supabase";
 import { getCurrentUser } from "../lib/currentUser";
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+
+async function sendMessage(formData: FormData) {
+  "use server";
+
+  const receiverId = String(formData.get("receiver_id") || "");
+  const message = String(formData.get("message") || "").trim();
+
+  if (!receiverId || !message) return;
+
+  const currentUser = await getCurrentUser();
+
+  if (!currentUser) {
+    throw new Error("You must be signed in to send messages.");
+  }
+
+  const { error } = await supabase.from("messages").insert({
+    sender_id: currentUser.id,
+    receiver_id: receiverId,
+    message,
+    read: false,
+  });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  revalidatePath("/messages");
+  redirect(`/messages?user=${receiverId}`);
+}
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -253,11 +283,59 @@ export default async function MessagesPage({
                   </div>
                 </div>
 
-                <LiveChatBox
-                  currentUserId={currentUser.id}
-                  selectedUserId={selectedUser.id}
-                  initialMessages={messages || []}
-                />
+                <div className="mt-6 max-h-[560px] min-h-[460px] space-y-4 overflow-y-auto pr-2">
+  {(messages || []).length === 0 ? (
+    <div className="flex min-h-[420px] items-center justify-center rounded-3xl border border-zinc-800 bg-zinc-950/80 text-zinc-500">
+      No messages yet. Start the conversation.
+    </div>
+  ) : (
+    messages?.map((msg) => {
+      const mine = msg.sender_id === currentUser.id;
+
+      return (
+        <div
+          key={msg.id}
+          className={`flex ${mine ? "justify-end" : "justify-start"}`}
+        >
+          <div
+            className={`max-w-[70%] rounded-2xl px-5 py-3 shadow ${
+              mine
+                ? "bg-orange-500 text-black"
+                : "bg-zinc-800 text-white"
+            }`}
+          >
+            <p>{msg.message}</p>
+
+            {msg.created_at && (
+              <p
+                className={`mt-2 text-xs ${
+                  mine ? "text-black/60" : "text-zinc-500"
+                }`}
+              >
+                {new Date(msg.created_at).toLocaleString()}
+              </p>
+            )}
+          </div>
+        </div>
+      );
+    })
+  )}
+</div>
+
+<form action={sendMessage} className="mt-6 flex gap-3">
+  <input type="hidden" name="receiver_id" value={selectedUser.id} />
+
+  <input
+    name="message"
+    required
+    placeholder="Type your message..."
+    className="flex-1 rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-3 outline-none focus:border-orange-500"
+  />
+
+  <button className="rounded-xl bg-orange-500 px-6 py-3 font-bold text-black hover:bg-orange-400">
+    Send
+  </button>
+</form>
               </>
             ) : (
               <div className="flex min-h-[620px] items-center justify-center rounded-3xl border border-zinc-800 bg-zinc-950/80">

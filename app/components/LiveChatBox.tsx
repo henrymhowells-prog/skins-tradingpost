@@ -14,9 +14,8 @@ export default function LiveChatBox({
 }) {
   const [messages, setMessages] = useState(initialMessages || []);
   const [message, setMessage] = useState("");
-  const [typing, setTyping] = useState(false);
+  const [error, setError] = useState("");
   const bottomRef = useRef<HTMLDivElement | null>(null);
-  const typingTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -24,34 +23,31 @@ export default function LiveChatBox({
 
   useEffect(() => {
     const channel = supabase
-      .channel(`chat-${currentUserId}-${selectedUserId}`)
+      .channel(`messages-${currentUserId}-${selectedUserId}`)
       .on(
         "postgres_changes",
         {
           event: "INSERT",
           schema: "public",
           table: "messages",
-          filter: `receiver_id=eq.${currentUserId}`,
         },
         (payload) => {
           const newMessage: any = payload.new;
 
-          if (newMessage.sender_id === selectedUserId) {
-            setMessages((current) => [...current, newMessage]);
-          }
+          const belongsToConversation =
+            (newMessage.sender_id === currentUserId &&
+              newMessage.receiver_id === selectedUserId) ||
+            (newMessage.sender_id === selectedUserId &&
+              newMessage.receiver_id === currentUserId);
+
+          if (!belongsToConversation) return;
+
+          setMessages((current) => {
+            if (current.some((msg) => msg.id === newMessage.id)) return current;
+            return [...current, newMessage];
+          });
         }
       )
-      .on("broadcast", { event: "typing" }, (payload) => {
-        if (payload.payload.userId !== currentUserId) {
-          setTyping(true);
-
-          if (typingTimeout.current) clearTimeout(typingTimeout.current);
-
-          typingTimeout.current = setTimeout(() => {
-            setTyping(false);
-          }, 1800);
-        }
-      })
       .subscribe();
 
     return () => {
@@ -59,11 +55,13 @@ export default function LiveChatBox({
     };
   }, [currentUserId, selectedUserId]);
 
-  async function sendMessage() {
+  async function sendMessage(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
     const cleanMessage = message.trim();
     if (!cleanMessage) return;
 
-    setMessage("");
+    setError("");
 
     const response = await fetch("/api/messages/send", {
       method: "POST",
@@ -78,23 +76,19 @@ export default function LiveChatBox({
 
     const data = await response.json();
 
-    if (data.message) {
-      setMessages((current) => [...current, data.message]);
+    if (!response.ok) {
+      setError(data.error || "Message failed to send.");
+      return;
     }
-  }
 
-  async function handleTyping(value: string) {
-    setMessage(value);
+    setMessage("");
 
-    await supabase
-      .channel(`chat-${currentUserId}-${selectedUserId}`)
-      .send({
-        type: "broadcast",
-        event: "typing",
-        payload: {
-          userId: currentUserId,
-        },
+    if (data.message) {
+      setMessages((current) => {
+        if (current.some((msg) => msg.id === data.message.id)) return current;
+        return [...current, data.message];
       });
+    }
   }
 
   return (
@@ -109,25 +103,16 @@ export default function LiveChatBox({
             const mine = msg.sender_id === currentUserId;
 
             return (
-              <div
-                key={msg.id}
-                className={`flex ${mine ? "justify-end" : "justify-start"}`}
-              >
+              <div key={msg.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
                 <div
                   className={`max-w-[70%] rounded-2xl px-5 py-3 shadow ${
-                    mine
-                      ? "bg-orange-500 text-black"
-                      : "bg-zinc-800 text-white"
+                    mine ? "bg-orange-500 text-black" : "bg-zinc-800 text-white"
                   }`}
                 >
                   <p>{msg.message}</p>
 
                   {msg.created_at && (
-                    <p
-                      className={`mt-2 text-xs ${
-                        mine ? "text-black/60" : "text-zinc-500"
-                      }`}
-                    >
+                    <p className={`mt-2 text-xs ${mine ? "text-black/60" : "text-zinc-500"}`}>
                       {new Date(msg.created_at).toLocaleString()}
                     </p>
                   )}
@@ -137,34 +122,30 @@ export default function LiveChatBox({
           })
         )}
 
-        {typing && (
-          <p className="text-sm italic text-zinc-500">Typing...</p>
-        )}
-
         <div ref={bottomRef} />
       </div>
 
-      <div className="mt-6 flex gap-3">
+      {error && (
+        <p className="mt-3 rounded-xl border border-red-500/40 bg-red-500/10 p-3 text-sm text-red-400">
+          {error}
+        </p>
+      )}
+
+      <form onSubmit={sendMessage} className="mt-6 flex gap-3">
         <input
           value={message}
-          onChange={(event) => handleTyping(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === "Enter") {
-              event.preventDefault();
-              sendMessage();
-            }
-          }}
+          onChange={(event) => setMessage(event.target.value)}
           placeholder="Type your message..."
           className="flex-1 rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-3 outline-none focus:border-orange-500"
         />
 
         <button
-          onClick={sendMessage}
+          type="submit"
           className="rounded-xl bg-orange-500 px-6 py-3 font-bold text-black hover:bg-orange-400"
         >
           Send
         </button>
-      </div>
+      </form>
     </>
   );
 }

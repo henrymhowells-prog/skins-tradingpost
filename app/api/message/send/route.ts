@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { supabase } from "../../../lib/supabase";
 import { getCurrentUser } from "../../../lib/currentUser";
 
+export const dynamic = "force-dynamic";
+
 export async function POST(request: Request) {
   const currentUser = await getCurrentUser();
 
@@ -30,6 +32,7 @@ export async function POST(request: Request) {
     .single();
 
   if (error) {
+    console.error("Send message error:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 

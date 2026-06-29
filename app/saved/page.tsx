@@ -1,5 +1,6 @@
 import { revalidatePath } from "next/cache";
 import AppShell from "../components/AppShell";
+import PageBackground from "../components/PageBackground";
 import { supabase } from "../lib/supabase";
 import { getCurrentUser } from "../lib/currentUser";
 
@@ -24,31 +25,6 @@ async function removeSavedListing(formData: FormData) {
   revalidatePath("/search-trades");
 }
 
-function PageBackground() {
-  return (
-    <div className="fixed inset-y-0 left-64 right-0 z-0 overflow-hidden bg-[#121318]">
-      <div
-        className="absolute inset-0 opacity-40"
-        style={{
-          backgroundImage:
-            "radial-gradient(circle, rgba(255,255,255,0.12) 1px, transparent 1px)",
-          backgroundSize: "48px 48px",
-        }}
-      />
-
-      <div className="absolute -left-20 top-0 h-full w-40 -skew-x-12 bg-blue-800" />
-      <div className="absolute left-64 top-72 h-[700px] w-72 -skew-x-12 bg-blue-800" />
-
-      <div className="absolute -right-20 top-0 h-full w-44 -skew-x-12 bg-orange-500" />
-      <div className="absolute right-12 top-0 h-full w-24 -skew-x-12 bg-orange-400/70" />
-
-      <div className="absolute right-20 top-12 text-4xl font-black italic text-white/70">
-        BETA
-      </div>
-    </div>
-  );
-}
-
 function timeAgo(dateValue: string) {
   const seconds = Math.floor(
     (Date.now() - new Date(dateValue).getTime()) / 1000
@@ -66,22 +42,104 @@ function timeAgo(dateValue: string) {
   return `${days}d ago`;
 }
 
+function TradeItemCard({
+  item,
+  imageUrl,
+}: {
+  item: any;
+  imageUrl?: string | null;
+}) {
+  return (
+    <div className="rounded-xl border border-zinc-800 bg-zinc-900/90 p-3">
+      <div className="mb-3 flex h-24 items-center justify-center rounded-lg bg-zinc-800">
+        {imageUrl ? (
+          <img
+            src={imageUrl}
+            alt={item.item_name}
+            className="max-h-full object-contain"
+          />
+        ) : (
+          <span className="text-xs text-zinc-500">No Image</span>
+        )}
+      </div>
+
+      <p className="line-clamp-2 text-sm font-bold">{item.item_name}</p>
+
+      {(item.float_min || item.float_max || item.pattern_seed) && (
+        <div className="mt-2 text-xs text-zinc-400">
+          {item.float_min && <p>Min Float: {item.float_min}</p>}
+          {item.float_max && <p>Max Float: {item.float_max}</p>}
+          {item.pattern_seed && <p>Pattern: {item.pattern_seed}</p>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ItemOverpayCard({ side }: { side: "orange" | "blue" }) {
+  return (
+    <div
+      className={`rounded-xl border p-3 ${
+        side === "orange"
+          ? "border-orange-500 bg-orange-500/10"
+          : "border-blue-500 bg-blue-500/10"
+      }`}
+    >
+      <div className="mb-3 flex h-24 items-center justify-center rounded-lg bg-zinc-800 text-3xl">
+        💰
+      </div>
+
+      <p
+        className={`text-center text-sm font-bold ${
+          side === "orange" ? "text-orange-400" : "text-blue-400"
+        }`}
+      >
+        Item Overpay
+      </p>
+    </div>
+  );
+}
+
+function OpenToOffersCard({ side }: { side: "orange" | "blue" }) {
+  return (
+    <div
+      className={`rounded-xl border p-3 ${
+        side === "orange"
+          ? "border-orange-500 bg-orange-500/10"
+          : "border-blue-500 bg-blue-500/10"
+      }`}
+    >
+      <div className="mb-3 flex h-24 items-center justify-center rounded-lg bg-zinc-800 text-3xl">
+        🤝
+      </div>
+
+      <p
+        className={`text-center text-sm font-bold ${
+          side === "orange" ? "text-orange-400" : "text-blue-400"
+        }`}
+      >
+        Open to Offers
+      </p>
+    </div>
+  );
+}
+
 export default async function SavedPage() {
   const currentUser = await getCurrentUser();
 
   if (!currentUser) {
     return (
       <AppShell>
-        <PageBackground />
+        <PageBackground leftOffset={256} />
 
         <div className="relative z-10">
-          <h1 className="text-5xl font-bold">Please sign in with Steam</h1>
+          <h1 className="text-5xl font-bold">Please sign in</h1>
 
           <a
-            href="/api/auth/steam/login"
+            href="/login"
             className="mt-6 inline-block rounded-xl bg-orange-500 px-5 py-3 font-semibold text-black hover:bg-orange-400"
           >
-            Sign in with Steam
+            Sign in
           </a>
         </div>
       </AppShell>
@@ -104,25 +162,65 @@ export default async function SavedPage() {
           .order("refreshed_at", { ascending: false })
       : { data: [] };
 
+  const { data: offerItems } =
+    listingIds.length > 0
+      ? await supabase
+          .from("listing_offer_items")
+          .select("*")
+          .in("listing_id", listingIds)
+      : { data: [] };
+
+  const { data: wantedItems } =
+    listingIds.length > 0
+      ? await supabase
+          .from("listing_wanted_items")
+          .select("*")
+          .in("listing_id", listingIds)
+      : { data: [] };
+
+  const itemNames = Array.from(
+    new Set(
+      [...(offerItems || []), ...(wantedItems || [])]
+        .map((item) => item.item_name)
+        .filter(Boolean)
+    )
+  );
+
+  const { data: cs2Items } =
+    itemNames.length > 0
+      ? await supabase
+          .from("cs2_items")
+          .select("item_name, image_url, weapon_type, rarity")
+          .in("item_name", itemNames)
+      : { data: [] };
+
   return (
     <AppShell>
-      <PageBackground />
+      <PageBackground leftOffset={256} />
 
       <div className="relative z-10">
-        <h1 className="text-5xl font-bold">Saved Listings</h1>
+        <h1 className="text-5xl font-bold">Saved Trades</h1>
 
         <p className="mt-3 text-zinc-300">
           Trade posts you saved to view later.
         </p>
 
-        <div className="mt-8 grid gap-6">
+        <div className="mt-8 grid gap-8">
           {(listings || []).length === 0 ? (
             <div className="rounded-3xl border border-zinc-800 bg-black/80 p-8 text-zinc-500 backdrop-blur">
-              You have no saved listings yet.
+              You have no saved trades yet.
             </div>
           ) : (
             listings?.map((listing) => {
               const postedDate = listing.refreshed_at || listing.created_at;
+
+              const giving = (offerItems || []).filter(
+                (item) => item.listing_id === listing.id
+              );
+
+              const wanting = (wantedItems || []).filter(
+                (item) => item.listing_id === listing.id
+              );
 
               return (
                 <div
@@ -161,6 +259,80 @@ export default async function SavedPage() {
                           Remove
                         </button>
                       </form>
+                    </div>
+                  </div>
+
+                  <div className="mt-8 grid items-center gap-8 lg:grid-cols-[1fr_220px_1fr]">
+                    <div className="min-h-[300px] rounded-[32px] border border-zinc-800 bg-black/90 p-6">
+                      <h3 className="mb-6 text-2xl font-bold text-orange-400">
+                        Trader Gives
+                      </h3>
+
+                      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                        {giving.map((item) => {
+                          const details = (cs2Items || []).find(
+                            (cs2) => cs2.item_name === item.item_name
+                          );
+
+                          return (
+                            <TradeItemCard
+                              key={item.id}
+                              item={item}
+                              imageUrl={item.image_url || details?.image_url}
+                            />
+                          );
+                        })}
+
+                        {listing.give_item_overpay && (
+                          <ItemOverpayCard side="orange" />
+                        )}
+
+                        {listing.give_open_to_offers && (
+                          <OpenToOffersCard side="orange" />
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="hidden flex-col items-center justify-center gap-8 lg:flex">
+                      <div className="flex items-center gap-3 text-orange-400">
+                        <div className="h-1 w-24 bg-orange-500" />
+                        <span className="text-6xl leading-none">→</span>
+                      </div>
+
+                      <div className="flex items-center gap-3 text-blue-400">
+                        <span className="text-6xl leading-none">←</span>
+                        <div className="h-1 w-24 bg-blue-500" />
+                      </div>
+                    </div>
+
+                    <div className="min-h-[300px] rounded-[32px] border border-zinc-800 bg-black/90 p-6">
+                      <h3 className="mb-6 text-2xl font-bold text-blue-400">
+                        Trader Wants
+                      </h3>
+
+                      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                        {wanting.map((item) => {
+                          const details = (cs2Items || []).find(
+                            (cs2) => cs2.item_name === item.item_name
+                          );
+
+                          return (
+                            <TradeItemCard
+                              key={item.id}
+                              item={item}
+                              imageUrl={item.image_url || details?.image_url}
+                            />
+                          );
+                        })}
+
+                        {listing.want_item_overpay && (
+                          <ItemOverpayCard side="blue" />
+                        )}
+
+                        {listing.want_open_to_offers && (
+                          <OpenToOffersCard side="blue" />
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>

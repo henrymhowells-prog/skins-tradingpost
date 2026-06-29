@@ -1,5 +1,6 @@
 import { revalidatePath } from "next/cache";
 import AppShell from "../components/AppShell";
+import PageBackground from "../components/PageBackground";
 import { supabase } from "../lib/supabase";
 import { getCurrentUser } from "../lib/currentUser";
 
@@ -23,37 +24,10 @@ async function markAllRead() {
   revalidatePath("/notifications");
 }
 
-function PageBackground() {
-  return (
-    <div className="fixed inset-y-0 left-64 right-0 z-0 overflow-hidden bg-[#121318]">
-      <div
-        className="absolute inset-0 opacity-40"
-        style={{
-          backgroundImage:
-            "radial-gradient(circle, rgba(255,255,255,0.12) 1px, transparent 1px)",
-          backgroundSize: "48px 48px",
-        }}
-      />
-
-      <div className="absolute -left-20 top-0 h-full w-40 -skew-x-12 bg-blue-800" />
-      <div className="absolute left-64 top-72 h-[700px] w-72 -skew-x-12 bg-blue-800" />
-
-      <div className="absolute -right-20 top-0 h-full w-44 -skew-x-12 bg-orange-500" />
-      <div className="absolute right-12 top-0 h-full w-24 -skew-x-12 bg-orange-400/70" />
-
-      <div className="absolute right-20 top-12 text-4xl font-black italic text-white/70">
-        BETA
-      </div>
-    </div>
-  );
-}
-
 function timeLabel(value?: string | null) {
   if (!value) return "Unknown time";
 
-  const seconds = Math.floor(
-    (Date.now() - new Date(value).getTime()) / 1000
-  );
+  const seconds = Math.floor((Date.now() - new Date(value).getTime()) / 1000);
 
   if (seconds < 60) return "just now";
 
@@ -75,7 +49,7 @@ export default async function NotificationsPage() {
   if (!currentUser) {
     return (
       <AppShell>
-        <PageBackground />
+        <PageBackground leftOffset={256} />
 
         <div className="relative z-10 rounded-[32px] border border-zinc-800 bg-black/80 p-8 backdrop-blur">
           <h1 className="text-5xl font-black">Please sign in</h1>
@@ -86,7 +60,7 @@ export default async function NotificationsPage() {
 
           <a
             href="/login"
-            className="mt-6 inline-block rounded-xl bg-orange-500 px-5 py-3 font-semibold text-black hover:bg-orange-400"
+            className="mt-6 inline-block rounded-xl bg-orange-500 px-5 py-3 font-bold text-black hover:bg-orange-400"
           >
             Sign in
           </a>
@@ -107,20 +81,34 @@ export default async function NotificationsPage() {
 
   return (
     <AppShell>
-      <PageBackground />
+      <PageBackground leftOffset={256} />
 
       <div className="relative z-10">
+        <div className="mb-6 w-fit">
+          <div className="flex items-center gap-3">
+            <div className="h-1 w-40 bg-orange-500" />
+            <span className="text-4xl leading-none text-orange-500">➜</span>
+          </div>
+
+          <div className="my-2 text-3xl font-black italic tracking-tight text-white/80">
+            NOTIFICATIONS
+          </div>
+
+          <div className="flex items-center gap-3">
+            <span className="text-4xl leading-none text-blue-700">⬅</span>
+            <div className="h-1 w-40 bg-blue-700" />
+          </div>
+        </div>
+
         <div className="rounded-[32px] border border-zinc-800 bg-black/80 p-8 backdrop-blur">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
             <div>
-              
-
               <h1 className="text-5xl font-black">Notifications</h1>
 
-<p className="mt-3 text-zinc-300">
-  Stay up to date with messages, new reviews, trading activity and important
-  account updates.
-</p>
+              <p className="mt-3 max-w-3xl text-zinc-300">
+                Stay up to date with messages, new reviews, trading activity and
+                important account updates.
+              </p>
 
               <p className="mt-3 text-zinc-300">
                 You have{" "}
@@ -133,7 +121,7 @@ export default async function NotificationsPage() {
 
             {(notifications || []).length > 0 && (
               <form action={markAllRead}>
-                <button className="rounded-xl bg-orange-500 px-6 py-3 font-bold text-black shadow-lg hover:bg-orange-400">
+                <button className="rounded-full bg-orange-500 px-7 py-3 font-black text-white shadow-lg hover:bg-orange-400">
                   Mark All Read
                 </button>
               </form>
@@ -153,12 +141,10 @@ export default async function NotificationsPage() {
               </h2>
 
               <p className="mx-auto mt-3 max-w-2xl text-zinc-400">
-  You'll receive notifications when traders send you messages, leave new
-  reviews, interact with your trades, or when there are important updates
-  about your account.
-</p>
-
-              
+                You'll receive notifications when traders send you messages,
+                leave new reviews, interact with your trades, or when there are
+                important updates about your account.
+              </p>
             </div>
           ) : (
             <div className="grid gap-4">

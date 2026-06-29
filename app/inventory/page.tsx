@@ -1,6 +1,7 @@
 import { revalidatePath } from "next/cache";
 import AppShell from "../components/AppShell";
 import InventorySearchGrid from "../components/InventorySearchGrid";
+import PageBackground from "../components/PageBackground";
 import { supabase } from "../lib/supabase";
 import { getCurrentUser } from "../lib/currentUser";
 
@@ -107,41 +108,16 @@ async function syncInventory() {
   revalidatePath("/inventory");
 }
 
-function PageBackground() {
-  return (
-    <div className="fixed inset-y-0 left-64 right-0 -z-0 overflow-hidden bg-[#121318]">
-      <div
-        className="absolute inset-0 opacity-40"
-        style={{
-          backgroundImage:
-            "radial-gradient(circle, rgba(255,255,255,0.12) 1px, transparent 1px)",
-          backgroundSize: "48px 48px",
-        }}
-      />
-
-      <div className="absolute -left-20 top-0 h-full w-40 -skew-x-12 bg-blue-800" />
-      <div className="absolute left-64 top-72 h-[700px] w-72 -skew-x-12 bg-blue-800" />
-
-      <div className="absolute -right-20 top-0 h-full w-44 -skew-x-12 bg-orange-500" />
-      <div className="absolute right-12 top-0 h-full w-24 -skew-x-12 bg-orange-400/70" />
-
-      <div className="absolute right-20 top-12 text-4xl font-black italic text-white/70">
-        BETA
-      </div>
-    </div>
-  );
-}
-
 export default async function InventoryPage() {
   const currentUser = await getCurrentUser();
 
   if (!currentUser) {
     return (
       <AppShell>
-        <PageBackground />
+        <PageBackground leftOffset={256} />
 
-        <div className="relative z-10">
-          <h1 className="text-5xl font-bold">Please sign in</h1>
+        <div className="relative z-10 rounded-[32px] border border-zinc-800 bg-black/80 p-8 backdrop-blur">
+          <h1 className="text-5xl font-black">Please sign in</h1>
 
           <p className="mt-3 text-zinc-300">
             Sign in with your email account to view your inventory page.
@@ -149,7 +125,7 @@ export default async function InventoryPage() {
 
           <a
             href="/login"
-            className="mt-6 inline-block rounded-xl bg-orange-500 px-5 py-3 font-semibold text-black hover:bg-orange-400"
+            className="mt-6 inline-block rounded-xl bg-orange-500 px-5 py-3 font-bold text-black hover:bg-orange-400"
           >
             Sign in
           </a>
@@ -164,60 +140,104 @@ export default async function InventoryPage() {
     .eq("user_id", currentUser.id)
     .order("item_name");
 
+  const itemCount = inventoryItems?.length || 0;
+
   return (
     <AppShell>
-      <PageBackground />
+      <PageBackground leftOffset={256} />
 
       <div className="relative z-10">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h1 className="text-5xl font-bold">My Inventory</h1>
+        <div className="mb-6 w-fit">
+          <div className="flex items-center gap-3">
+            <div className="h-1 w-40 bg-orange-500" />
+            <span className="text-4xl leading-none text-orange-500">➜</span>
+          </div>
 
-            <p className="mt-3 text-zinc-300">
+          <div className="my-2 text-3xl font-black italic tracking-tight text-white/80">
+            INVENTORY
+          </div>
+
+          <div className="flex items-center gap-3">
+            <span className="text-4xl leading-none text-blue-700">⬅</span>
+            <div className="h-1 w-40 bg-blue-700" />
+          </div>
+        </div>
+
+        <div className="grid gap-6 xl:grid-cols-[1fr_360px]">
+          <div className="rounded-[32px] border border-zinc-800 bg-black/80 p-8 backdrop-blur">
+            <h1 className="text-5xl font-black">My Inventory</h1>
+
+            <p className="mt-3 max-w-3xl text-zinc-300">
               View your saved items and optionally link Steam to sync your real
               CS2 inventory.
             </p>
 
-            {currentUser.last_inventory_sync && (
-              <p className="mt-2 text-sm text-zinc-500">
-                Last synced:{" "}
-                {new Date(currentUser.last_inventory_sync).toLocaleString()}
-              </p>
-            )}
+            <div className="mt-8 grid gap-3 sm:grid-cols-3">
+              <InventoryStat label="Items" value={itemCount} />
+              <InventoryStat
+                label="Steam"
+                value={currentUser.steam_id ? "Linked" : "Optional"}
+              />
+              <InventoryStat
+                label="Last Sync"
+                value={
+                  currentUser.last_inventory_sync
+                    ? new Date(currentUser.last_inventory_sync).toLocaleDateString()
+                    : "Never"
+                }
+              />
+            </div>
           </div>
 
-          {currentUser.steam_id ? (
-            <form action={syncInventory}>
-              <button className="rounded-xl bg-orange-500 px-6 py-3 font-semibold text-black hover:bg-orange-400">
-                Sync Inventory
-              </button>
+          <div className="rounded-[32px] border border-zinc-800 bg-black/80 p-6 backdrop-blur">
+            {currentUser.steam_id ? (
+              <form action={syncInventory}>
+                <p className="text-2xl font-black text-orange-400">
+                  Steam inventory linked
+                </p>
 
-              <p className="mt-2 text-right text-sm text-zinc-400">
-                Updates to your current Steam inventory.
-              </p>
-            </form>
-          ) : (
-            <div className="max-w-sm rounded-2xl border border-orange-500/40 bg-black/80 p-5 text-right">
-              <p className="font-bold text-orange-400">
-                Steam not linked yet
-              </p>
+                <p className="mt-3 text-sm text-zinc-400">
+                  Sync your latest CS2 inventory from Steam. This may take a
+                  moment if you have many items.
+                </p>
 
-              <p className="mt-2 text-sm text-zinc-400">
-                Link Steam when you want to sync your CS2 inventory.
-              </p>
+                {currentUser.last_inventory_sync && (
+                  <p className="mt-4 rounded-2xl border border-zinc-800 bg-zinc-950/80 p-4 text-sm text-zinc-400">
+                    Last synced:{" "}
+                    <span className="text-zinc-200">
+                      {new Date(currentUser.last_inventory_sync).toLocaleString()}
+                    </span>
+                  </p>
+                )}
 
-              <a
-                href="/api/auth/steam/login"
-                className="mt-4 inline-block rounded-xl bg-orange-500 px-5 py-3 font-semibold text-black hover:bg-orange-400"
-              >
-                Link Steam Account
-              </a>
-            </div>
-          )}
+                <button className="mt-6 w-full rounded-full bg-orange-500 px-6 py-4 font-black text-white shadow-lg hover:bg-orange-400">
+                  Sync Inventory
+                </button>
+              </form>
+            ) : (
+              <div>
+                <p className="text-2xl font-black text-orange-400">
+                  Steam not linked yet
+                </p>
+
+                <p className="mt-3 text-sm text-zinc-400">
+                  Link Steam when you want to sync your real CS2 inventory.
+                  Steam linking is optional.
+                </p>
+
+                <a
+                  href="/api/auth/steam/login"
+                  className="mt-6 block rounded-full bg-orange-500 px-6 py-4 text-center font-black text-white shadow-lg hover:bg-orange-400"
+                >
+                  Link Steam Account
+                </a>
+              </div>
+            )}
+          </div>
         </div>
 
         {currentUser.steam_id ? (
-          <div className="mt-8">
+          <div className="mt-8 rounded-[32px] border border-zinc-800 bg-black/80 p-6 backdrop-blur">
             <InventorySearchGrid items={inventoryItems || []} />
           </div>
         ) : (
@@ -226,21 +246,21 @@ export default async function InventoryPage() {
 
             <p className="mt-3 max-w-3xl text-zinc-300">
               You can still browse trades, message users, save listings, create
-              listings, and use your account without linking Steam. Steam is only
-              needed if you want your real CS2 inventory to appear here.
+              listings, and use your account without linking Steam. Steam is
+              only needed if you want your real CS2 inventory to appear here.
             </p>
 
             <div className="mt-6 flex flex-wrap gap-3">
               <a
                 href="/search-trades"
-                className="rounded-xl bg-orange-500 px-5 py-3 font-semibold text-black hover:bg-orange-400"
+                className="rounded-full bg-orange-500 px-6 py-3 font-black text-white hover:bg-orange-400"
               >
                 Search Trades
               </a>
 
               <a
                 href="/listings"
-                className="rounded-xl border border-zinc-700 px-5 py-3 font-semibold hover:bg-zinc-800"
+                className="rounded-full border border-zinc-700 px-6 py-3 font-black hover:bg-zinc-800"
               >
                 Create Listing
               </a>
@@ -249,5 +269,22 @@ export default async function InventoryPage() {
         )}
       </div>
     </AppShell>
+  );
+}
+
+function InventoryStat({
+  label,
+  value,
+}: {
+  label: string;
+  value: string | number;
+}) {
+  return (
+    <div className="rounded-2xl border border-zinc-800 bg-zinc-950/80 p-4">
+      <p className="text-2xl font-black text-white">{value}</p>
+      <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+        {label}
+      </p>
+    </div>
   );
 }

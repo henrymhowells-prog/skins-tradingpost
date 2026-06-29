@@ -1,37 +1,13 @@
 import AppShell from "../components/AppShell";
+import PageBackground from "../components/PageBackground";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-function PageBackground() {
-  return (
-    <div className="fixed inset-y-0 left-64 right-0 z-0 overflow-hidden bg-[#121318]">
-      <div
-        className="absolute inset-0 opacity-40"
-        style={{
-          backgroundImage:
-            "radial-gradient(circle, rgba(255,255,255,0.12) 1px, transparent 1px)",
-          backgroundSize: "48px 48px",
-        }}
-      />
-
-      <div className="absolute -left-20 top-0 h-full w-40 -skew-x-12 bg-blue-800" />
-      <div className="absolute left-64 top-72 h-[700px] w-72 -skew-x-12 bg-blue-800" />
-
-      <div className="absolute -right-20 top-0 h-full w-44 -skew-x-12 bg-orange-500" />
-      <div className="absolute right-12 top-0 h-full w-24 -skew-x-12 bg-orange-400/70" />
-
-      <div className="absolute right-20 top-12 text-4xl font-black italic text-white/70">
-        BETA
-      </div>
-    </div>
-  );
-}
-
 export default function SettingsPage() {
   return (
     <AppShell>
-      <PageBackground />
+      <PageBackground leftOffset={256} />
 
       <div className="relative z-10">
         <h1 className="text-5xl font-bold">Settings</h1>
@@ -117,21 +93,21 @@ export default function SettingsPage() {
             </div>
 
             <div className="mt-10 rounded-3xl border border-red-500/30 bg-red-500/10 p-6">
-  <h2 className="text-2xl font-bold text-red-400">
-    Account
-  </h2>
+              <h2 className="text-2xl font-bold text-red-400">
+                Account
+              </h2>
 
-  <p className="mt-2 text-zinc-400">
-    Sign out of your account on this device.
-  </p>
+              <p className="mt-2 text-zinc-400">
+                Sign out of your account on this device.
+              </p>
 
-  <a
-    href="/logout"
-    className="mt-6 inline-block rounded-xl bg-red-500 px-6 py-3 font-semibold text-white transition hover:bg-red-600"
-  >
-    Log Out
-  </a>
-</div>
+              <a
+                href="/logout"
+                className="mt-6 inline-block rounded-xl bg-red-500 px-6 py-3 font-semibold text-white transition hover:bg-red-600"
+              >
+                Log Out
+              </a>
+            </div>
           </div>
         </div>
       </div>

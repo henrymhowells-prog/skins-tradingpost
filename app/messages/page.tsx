@@ -1,6 +1,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import AppShell from "../components/AppShell";
+import PageBackground from "../components/PageBackground";
 import { supabase } from "../lib/supabase";
 import { getCurrentUser } from "../lib/currentUser";
 
@@ -18,7 +19,7 @@ async function sendMessage(formData: FormData) {
   const currentUser = await getCurrentUser();
 
   if (!currentUser) {
-    throw new Error("You must be signed in with Steam to send messages.");
+    throw new Error("You must be signed in to send messages.");
   }
 
   const { error } = await supabase.from("messages").insert({
@@ -36,29 +37,9 @@ async function sendMessage(formData: FormData) {
   redirect(`/messages?user=${receiverId}`);
 }
 
-function PageBackground() {
-  return (
-    <div className="fixed inset-y-0 left-64 right-0 -z-0 overflow-hidden bg-[#121318]">
-      <div
-        className="absolute inset-0 opacity-40"
-        style={{
-          backgroundImage:
-            "radial-gradient(circle, rgba(255,255,255,0.12) 1px, transparent 1px)",
-          backgroundSize: "48px 48px",
-        }}
-      />
-
-      <div className="absolute -left-20 top-0 h-full w-40 -skew-x-12 bg-blue-800" />
-      <div className="absolute left-64 top-72 h-[700px] w-72 -skew-x-12 bg-blue-800" />
-
-      <div className="absolute -right-20 top-0 h-full w-44 -skew-x-12 bg-orange-500" />
-      <div className="absolute right-12 top-0 h-full w-24 -skew-x-12 bg-orange-400/70" />
-
-      <div className="absolute right-20 top-12 text-4xl font-black italic text-white/70">
-        BETA
-      </div>
-    </div>
-  );
+function timeLabel(value?: string | null) {
+  if (!value) return "";
+  return new Date(value).toLocaleString();
 }
 
 export default async function MessagesPage({
@@ -74,16 +55,20 @@ export default async function MessagesPage({
   if (!currentUser) {
     return (
       <AppShell>
-        <PageBackground />
+        <PageBackground leftOffset={256} />
 
-        <div className="relative z-10">
-          <h1 className="text-5xl font-bold">Please sign in with Steam</h1>
+        <div className="relative z-10 rounded-[32px] border border-zinc-800 bg-black/80 p-8 backdrop-blur">
+          <h1 className="text-5xl font-black">Please sign in</h1>
+
+          <p className="mt-3 text-zinc-300">
+            Sign in with your email account to view and send messages.
+          </p>
 
           <a
-            href="/api/auth/steam/login"
-            className="mt-6 inline-block rounded-xl bg-orange-500 px-5 py-3 font-semibold text-black hover:bg-orange-400"
+            href="/login"
+            className="mt-6 inline-block rounded-xl bg-orange-500 px-5 py-3 font-bold text-black hover:bg-orange-400"
           >
-            Sign in with Steam
+            Sign in
           </a>
         </div>
       </AppShell>
@@ -131,10 +116,7 @@ export default async function MessagesPage({
 
   const { data: users } =
     conversationUserIds.length > 0
-      ? await supabase
-          .from("users")
-          .select("*")
-          .in("id", conversationUserIds)
+      ? await supabase.from("users").select("*").in("id", conversationUserIds)
       : { data: [] };
 
   const sortedUsers = (users || []).sort((a, b) => {
@@ -155,34 +137,57 @@ export default async function MessagesPage({
   const selectedUser =
     (users || []).find((user) => user.id === selectedUserId) || null;
 
-  const { data: messages } = selectedUserId
+  const { data: messagesRaw } = selectedUserId
     ? await supabase
         .from("messages")
         .select("*")
         .or(
           `and(sender_id.eq.${currentUser.id},receiver_id.eq.${selectedUserId}),and(sender_id.eq.${selectedUserId},receiver_id.eq.${currentUser.id})`
         )
-        .order("created_at", { ascending: true })
+        .order("created_at", { ascending: false })
+        .limit(30)
     : { data: [] };
+
+  const messages = [...(messagesRaw || [])].reverse();
 
   return (
     <AppShell>
-      <PageBackground />
+      <PageBackground leftOffset={256} />
 
       <div className="relative z-10">
-        <h1 className="text-5xl font-bold">Messages</h1>
+        <div className="mb-6 w-fit">
+          <div className="flex items-center gap-3">
+            <div className="h-1 w-40 bg-orange-500" />
+            <span className="text-4xl leading-none text-orange-500">➜</span>
+          </div>
 
-        <p className="mt-3 text-zinc-300">
-          Message traders about listings, offers, and active trades.
-        </p>
+          <div className="my-2 text-3xl font-black italic tracking-tight text-white/80">
+            MESSAGES
+          </div>
 
-        <div className="mt-8 grid gap-6 lg:grid-cols-[340px_1fr]">
-          <div className="rounded-3xl border border-zinc-800 bg-black/80 p-5 backdrop-blur">
-            <h2 className="text-2xl font-bold">Traders</h2>
+          <div className="flex items-center gap-3">
+            <span className="text-4xl leading-none text-blue-700">⬅</span>
+            <div className="h-1 w-40 bg-blue-700" />
+          </div>
+        </div>
+
+        <div className="rounded-[32px] border border-zinc-800 bg-black/80 p-8 backdrop-blur">
+          <h1 className="text-5xl font-black">Messages</h1>
+
+          <p className="mt-3 max-w-3xl text-zinc-300">
+            Message traders about listings, offers and active trades.
+          </p>
+        </div>
+
+        <div className="mt-8 flex w-full min-w-0 flex-row items-stretch gap-6 overflow-hidden">
+          <section className="w-[320px] shrink-0 rounded-[32px] border border-zinc-800 bg-black/80 p-5 backdrop-blur">
+            <h2 className="text-2xl font-black">Traders</h2>
 
             <div className="mt-5 max-h-[680px] space-y-3 overflow-y-auto pr-1">
               {sortedUsers.length === 0 ? (
-                <p className="text-sm text-zinc-500">No conversations yet.</p>
+                <div className="rounded-2xl border border-zinc-800 bg-zinc-950/80 p-5 text-sm text-zinc-500">
+                  No conversations yet.
+                </div>
               ) : (
                 sortedUsers.map((user) => {
                   const unreadCount =
@@ -191,7 +196,7 @@ export default async function MessagesPage({
                   return (
                     <a
                       key={user.id}
-                     href={`/messages/open?user=${user.id}`}
+                      href={`/messages?user=${user.id}`}
                       className={`flex w-full items-center gap-3 rounded-2xl border p-3 text-left transition ${
                         user.id === selectedUserId
                           ? "border-orange-500 bg-orange-500/10"
@@ -205,7 +210,7 @@ export default async function MessagesPage({
                           "https://avatars.githubusercontent.com/u/9919?s=200&v=4"
                         }
                         alt={user.steam_name || user.username || "Trader"}
-                        className="h-11 w-11 rounded-full"
+                        className="h-11 w-11 shrink-0 rounded-full"
                       />
 
                       <div className="min-w-0">
@@ -219,7 +224,7 @@ export default async function MessagesPage({
                       </div>
 
                       {unreadCount > 0 && (
-                        <span className="ml-auto rounded-full bg-orange-500 px-2 py-0.5 text-xs font-bold text-black">
+                        <span className="ml-auto rounded-full bg-orange-500 px-2 py-0.5 text-xs font-black text-black">
                           {unreadCount}
                         </span>
                       )}
@@ -228,9 +233,9 @@ export default async function MessagesPage({
                 })
               )}
             </div>
-          </div>
+          </section>
 
-          <div className="rounded-3xl border border-zinc-800 bg-black/80 p-6 backdrop-blur">
+          <section className="min-w-0 flex-1 rounded-[32px] border border-zinc-800 bg-black/80 p-6 backdrop-blur">
             {selectedUser ? (
               <>
                 <div className="flex items-center gap-4 border-b border-zinc-800 pb-5">
@@ -250,10 +255,10 @@ export default async function MessagesPage({
                     />
                   </a>
 
-                  <div>
+                  <div className="min-w-0">
                     <a
                       href={`/user/${selectedUser.id}`}
-                      className="text-3xl font-bold hover:text-orange-400"
+                      className="break-words text-3xl font-black hover:text-orange-400"
                     >
                       {selectedUser.steam_name ||
                         selectedUser.username ||
@@ -266,7 +271,7 @@ export default async function MessagesPage({
                   </div>
                 </div>
 
-                <div className="mt-6 min-h-[460px] space-y-4">
+                <div className="mt-6 max-h-[560px] min-h-[460px] space-y-4 overflow-y-auto pr-2">
                   {(messages || []).length === 0 ? (
                     <div className="flex min-h-[420px] items-center justify-center rounded-3xl border border-zinc-800 bg-zinc-950/80 text-zinc-500">
                       No messages yet. Start the conversation.
@@ -297,7 +302,7 @@ export default async function MessagesPage({
                                   mine ? "text-black/60" : "text-zinc-500"
                                 }`}
                               >
-                                {new Date(msg.created_at).toLocaleString()}
+                                {timeLabel(msg.created_at)}
                               </p>
                             )}
                           </div>
@@ -321,7 +326,7 @@ export default async function MessagesPage({
                     className="flex-1 rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-3 outline-none focus:border-orange-500"
                   />
 
-                  <button className="rounded-xl bg-orange-500 px-6 py-3 font-semibold text-black hover:bg-orange-400">
+                  <button className="rounded-xl bg-orange-500 px-6 py-3 font-bold text-black hover:bg-orange-400">
                     Send
                   </button>
                 </form>
@@ -330,14 +335,14 @@ export default async function MessagesPage({
               <div className="flex min-h-[620px] items-center justify-center rounded-3xl border border-zinc-800 bg-zinc-950/80">
                 <div className="text-center">
                   <p className="text-5xl">💬</p>
-                  <h2 className="mt-4 text-2xl font-bold">Select a trader</h2>
+                  <h2 className="mt-4 text-2xl font-black">Select a trader</h2>
                   <p className="mt-2 text-zinc-500">
                     Choose someone from the left to start messaging.
                   </p>
                 </div>
               </div>
             )}
-          </div>
+          </section>
         </div>
       </div>
     </AppShell>

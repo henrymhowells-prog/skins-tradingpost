@@ -180,7 +180,11 @@ export default async function MessagesPage({
         </div>
 
         <div className="mt-8 flex w-full min-w-0 flex-row items-stretch gap-6 overflow-hidden">
-          <section className="w-[320px] shrink-0 rounded-[32px] border border-zinc-800 bg-black/80 p-5 backdrop-blur">
+          <section
+  className={`w-full rounded-[32px] border border-zinc-800 bg-black/80 p-5 backdrop-blur lg:w-[320px] lg:shrink-0 ${
+    selectedUser ? "hidden lg:block" : "block"
+  }`}
+>
             <h2 className="text-2xl font-black">Traders</h2>
 
             <div className="mt-5 max-h-[680px] space-y-3 overflow-y-auto pr-1">
@@ -235,7 +239,18 @@ export default async function MessagesPage({
             </div>
           </section>
 
-          <section className="min-w-0 flex-1 rounded-[32px] border border-zinc-800 bg-black/80 p-6 backdrop-blur">
+          <section
+  className={`min-w-0 flex-1 rounded-[32px] border border-zinc-800 bg-black/80 p-4 backdrop-blur sm:p-6 ${
+    selectedUser ? "block" : "hidden lg:block"
+  }`}
+>{selectedUser && (
+  <a
+    href="/messages"
+    className="mb-4 inline-block rounded-xl border border-zinc-700 px-4 py-2 text-sm font-bold text-zinc-300 hover:bg-zinc-800 lg:hidden"
+  >
+    ← Back to traders
+  </a>
+)}
             {selectedUser ? (
               <>
                 <div className="flex items-center gap-4 border-b border-zinc-800 pb-5">

@@ -24,22 +24,22 @@ export default async function AppShell({
 
   if (currentUser) {
     const [{ count: notificationsCount }, { count: messagesCount }] =
-  await Promise.all([
-    supabase
-      .from("notifications")
-      .select("*", { count: "exact", head: true })
-      .eq("user_id", currentUser.id)
-      .eq("read", false),
+      await Promise.all([
+        supabase
+          .from("notifications")
+          .select("*", { count: "exact", head: true })
+          .eq("user_id", currentUser.id)
+          .eq("read", false),
 
-    supabase
-      .from("messages")
-      .select("*", { count: "exact", head: true })
-      .eq("receiver_id", currentUser.id)
-      .eq("read", false),
-  ]);
+        supabase
+          .from("messages")
+          .select("*", { count: "exact", head: true })
+          .eq("receiver_id", currentUser.id)
+          .eq("read", false),
+      ]);
 
-unreadNotificationCount = notificationsCount || 0;
-unreadMessageCount = messagesCount || 0;
+    unreadNotificationCount = notificationsCount || 0;
+    unreadMessageCount = messagesCount || 0;
   }
 
   const isAdmin = currentUser?.role === "admin";
@@ -48,16 +48,7 @@ unreadMessageCount = messagesCount || 0;
     <main className="min-h-screen bg-zinc-950 text-white">
       <div className="flex">
         <aside className="hidden min-h-screen w-64 shrink-0 border-r border-white/10 bg-black/80 p-5 backdrop-blur-xl md:block">
-         <a
-  href="/dashboard"
-  className="block rounded-2xl border border-white/10 bg-zinc-950/70 px-5 py-4 shadow-xl shadow-black/40"
->
-  <span className="block pl-2 text-[1.55rem] font-black leading-[1.05] tracking-tight text-white">
-    Skins
-    <br />
-    TradingPost
-  </span>
-</a>
+          <LogoBox />
 
           <nav className="mt-14 space-y-3">
             <SidebarLink href="/dashboard" label="Dashboard" />
@@ -102,12 +93,116 @@ unreadMessageCount = messagesCount || 0;
         </aside>
 
         <div className="min-w-0 flex-1">
-         
+          <MobileNav
+            isAdmin={isAdmin}
+            unreadMessageCount={unreadMessageCount}
+            unreadNotificationCount={unreadNotificationCount}
+          />
 
-          <section className="relative z-10 p-8">{children}</section>
+          <section className="relative z-10 p-4 sm:p-6 md:p-8">
+            {children}
+          </section>
         </div>
       </div>
     </main>
+  );
+}
+
+function LogoBox() {
+  return (
+    <a
+      href="/dashboard"
+      className="block rounded-2xl border border-white/10 bg-zinc-950/70 px-5 py-4 shadow-xl shadow-black/40"
+    >
+      <span className="block pl-2 text-[1.55rem] font-black leading-[1.05] tracking-tight text-white">
+        Skins
+        <br />
+        TradingPost
+      </span>
+    </a>
+  );
+}
+
+function MobileNav({
+  isAdmin,
+  unreadMessageCount,
+  unreadNotificationCount,
+}: {
+  isAdmin: boolean;
+  unreadMessageCount: number;
+  unreadNotificationCount: number;
+}) {
+  return (
+    <div className="sticky top-0 z-50 border-b border-white/10 bg-black/85 px-4 py-3 backdrop-blur-xl md:hidden">
+      <div className="flex items-center justify-between gap-3">
+        <a href="/dashboard" className="text-lg font-black leading-tight">
+          Skins TradingPost
+        </a>
+
+        <div className="flex items-center gap-2">
+          <MobileIconLink
+            href="/messages"
+            label="💬"
+            count={unreadMessageCount}
+            color="orange"
+          />
+
+          <MobileIconLink
+            href="/notifications"
+            label="🔔"
+            count={unreadNotificationCount}
+            color="red"
+          />
+
+          <details className="relative">
+            <summary className="list-none rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-black text-white">
+              Menu
+            </summary>
+
+            <div className="absolute right-0 top-12 z-50 w-72 rounded-2xl border border-white/10 bg-zinc-950/95 p-3 shadow-2xl shadow-black/50 backdrop-blur-xl">
+              <div className="grid gap-1">
+                <MobileMenuLink href="/dashboard" label="Dashboard" />
+                <MobileMenuLink
+                  href="/notifications"
+                  label="Notifications"
+                  badge={unreadNotificationCount}
+                />
+                <MobileMenuLink
+                  href="/messages"
+                  label="Messages"
+                  badge={unreadMessageCount}
+                />
+
+                <div className="my-2 border-t border-white/10" />
+
+                {mainNavItems.slice(1).map((item) => (
+                  <MobileMenuLink
+                    key={item.href}
+                    href={item.href}
+                    label={item.label}
+                  />
+                ))}
+
+                {isAdmin && (
+                  <>
+                    <div className="my-2 border-t border-white/10" />
+
+                    <p className="px-3 py-2 text-[11px] font-black uppercase tracking-[0.2em] text-orange-500/80">
+                      Admin
+                    </p>
+
+                    <MobileMenuLink href="/admin" label="Admin Dashboard" admin />
+                    <MobileMenuLink href="/admin/reports" label="Admin Reports" admin />
+                    <MobileMenuLink href="/admin/users" label="Admin Users" admin />
+                    <MobileMenuLink href="/admin/listings" label="Admin Listings" admin />
+                  </>
+                )}
+              </div>
+            </div>
+          </details>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -150,7 +245,38 @@ function SidebarLink({
   );
 }
 
-function TopIconLink({
+function MobileMenuLink({
+  href,
+  label,
+  badge,
+  admin = false,
+}: {
+  href: string;
+  label: string;
+  badge?: number;
+  admin?: boolean;
+}) {
+  return (
+    <a
+      href={href}
+      className={`flex items-center justify-between rounded-xl px-3 py-3 text-sm font-bold ${
+        admin
+          ? "text-orange-400 hover:bg-orange-500/10"
+          : "text-zinc-200 hover:bg-white/5"
+      }`}
+    >
+      <span>{label}</span>
+
+      {badge && badge > 0 && (
+        <span className="rounded-full bg-orange-500 px-2 py-0.5 text-xs font-black text-black">
+          {badge}
+        </span>
+      )}
+    </a>
+  );
+}
+
+function MobileIconLink({
   href,
   label,
   count,
@@ -164,7 +290,7 @@ function TopIconLink({
   return (
     <a
       href={href}
-      className="relative flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/5 text-zinc-300 transition hover:bg-white/10 hover:text-white"
+      className="relative flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/5"
     >
       <span>{label}</span>
 
@@ -177,29 +303,6 @@ function TopIconLink({
           {count}
         </span>
       )}
-    </a>
-  );
-}
-
-function DropdownLink({
-  href,
-  label,
-  admin = false,
-}: {
-  href: string;
-  label: string;
-  admin?: boolean;
-}) {
-  return (
-    <a
-      href={href}
-      className={`block rounded-xl px-4 py-2.5 text-sm font-semibold transition ${
-        admin
-          ? "text-orange-400 hover:bg-orange-500/10"
-          : "text-zinc-300 hover:bg-white/5 hover:text-white"
-      }`}
-    >
-      {label}
     </a>
   );
 }

@@ -48,11 +48,11 @@ unreadMessageCount = messagesCount || 0;
     <main className="min-h-screen bg-zinc-950 text-white">
       <div className="flex">
         <aside className="hidden min-h-screen w-64 shrink-0 border-r border-white/10 bg-black/80 p-5 backdrop-blur-xl md:block">
-          <a
+         <a
   href="/dashboard"
-  className="block rounded-2xl border border-white/15 bg-zinc-950/70 px-8 py-5"
+  className="block rounded-2xl border border-white/10 bg-zinc-950/70 px-5 py-4 shadow-xl shadow-black/40"
 >
-  <span className="block text-[1.85rem] font-black leading-[1.05] tracking-tight">
+  <span className="block pl-2 text-[1.55rem] font-black leading-[1.05] tracking-tight text-white">
     Skins
     <br />
     TradingPost

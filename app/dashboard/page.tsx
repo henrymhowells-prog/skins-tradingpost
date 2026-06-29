@@ -49,29 +49,36 @@ export default async function DashboardPage() {
 
   const nowIso = new Date().toISOString();
 
-  const { count: inventoryCount } = await supabase
+  const [
+  { count: inventoryCount },
+  { count: activeListingsCount },
+  { count: savedCount },
+  { data: recentListings },
+] = await Promise.all([
+  supabase
     .from("inventory_items")
     .select("*", { count: "exact", head: true })
-    .eq("user_id", currentUser.id);
+    .eq("user_id", currentUser.id),
 
-  const { count: activeListingsCount } = await supabase
+  supabase
     .from("listings")
     .select("*", { count: "exact", head: true })
     .eq("user_id", currentUser.id)
-    .gt("expires_at", nowIso);
+    .gt("expires_at", nowIso),
 
-  const { count: savedCount } = await supabase
+  supabase
     .from("saved_listings")
     .select("*", { count: "exact", head: true })
-    .eq("user_id", currentUser.id);
+    .eq("user_id", currentUser.id),
 
-  const { data: recentListings } = await supabase
+  supabase
     .from("listings")
-    .select("*")
+    .select("id, title, refreshed_at, created_at")
     .eq("user_id", currentUser.id)
     .gt("expires_at", nowIso)
     .order("refreshed_at", { ascending: false })
-    .limit(4);
+    .limit(4),
+]);
 
   return (
     <AppShell>

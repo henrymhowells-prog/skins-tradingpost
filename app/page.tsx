@@ -123,7 +123,7 @@ export default function HomePage() {
           </a>
 
           <a
-            href="https://x.com/skinstradingpost"
+            href="https://x.com/SkinsTradingP"
             target="_blank"
             rel="noopener noreferrer"
             aria-label="X"

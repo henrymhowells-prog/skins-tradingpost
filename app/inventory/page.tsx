@@ -144,131 +144,42 @@ export default async function InventoryPage() {
 
   return (
     <AppShell>
-      <PageBackground leftOffset={256} />
+  <PageBackground leftOffset={256} />
 
-      <div className="relative z-10">
-        <div className="mb-6 w-fit">
-          <div className="flex items-center gap-3">
-            <div className="h-1 w-40 bg-orange-500" />
-            <span className="text-4xl leading-none text-orange-500">➜</span>
-          </div>
+  <div className="relative z-10">
+    <div className="rounded-[32px] border border-zinc-800 bg-black/80 p-10 backdrop-blur">
+      <p className="text-sm font-black uppercase tracking-[0.25em] text-orange-400">
+        Coming Soon
+      </p>
 
-          <div className="my-2 text-3xl font-black italic tracking-tight text-white/80">
-            INVENTORY
-          </div>
+      <h1 className="mt-3 text-5xl font-black">
+        Steam Inventory Linking
+      </h1>
 
-          <div className="flex items-center gap-3">
-            <span className="text-4xl leading-none text-blue-700">⬅</span>
-            <div className="h-1 w-40 bg-blue-700" />
-          </div>
-        </div>
+      <p className="mt-5 max-w-3xl text-lg leading-8 text-zinc-300">
+        Linking your CS2 inventory with Steam is coming soon. For now, you can
+        still browse trades, create listings, save trades, message traders and
+        use the rest of Skins TradingPost normally.
+      </p>
 
-        <div className="grid gap-6 xl:grid-cols-[1fr_360px]">
-          <div className="rounded-[32px] border border-zinc-800 bg-black/80 p-8 backdrop-blur">
-            <h1 className="text-5xl font-black">My Inventory</h1>
+      <div className="mt-8 flex flex-wrap gap-4">
+        <a
+          href="/search-trades"
+          className="rounded-xl bg-orange-500 px-6 py-3 font-bold text-black hover:bg-orange-400"
+        >
+          Search Trades
+        </a>
 
-            <p className="mt-3 max-w-3xl text-zinc-300">
-              View your saved items and optionally link Steam to sync your real
-              CS2 inventory.
-            </p>
-
-            <div className="mt-8 grid gap-3 sm:grid-cols-3">
-              <InventoryStat label="Items" value={itemCount} />
-              <InventoryStat
-                label="Steam"
-                value={currentUser.steam_id ? "Linked" : "Optional"}
-              />
-              <InventoryStat
-                label="Last Sync"
-                value={
-                  currentUser.last_inventory_sync
-                    ? new Date(currentUser.last_inventory_sync).toLocaleDateString()
-                    : "Never"
-                }
-              />
-            </div>
-          </div>
-
-          <div className="rounded-[32px] border border-zinc-800 bg-black/80 p-6 backdrop-blur">
-            {currentUser.steam_id ? (
-              <form action={syncInventory}>
-                <p className="text-2xl font-black text-orange-400">
-                  Steam inventory linked
-                </p>
-
-                <p className="mt-3 text-sm text-zinc-400">
-                  Sync your latest CS2 inventory from Steam. This may take a
-                  moment if you have many items.
-                </p>
-
-                {currentUser.last_inventory_sync && (
-                  <p className="mt-4 rounded-2xl border border-zinc-800 bg-zinc-950/80 p-4 text-sm text-zinc-400">
-                    Last synced:{" "}
-                    <span className="text-zinc-200">
-                      {new Date(currentUser.last_inventory_sync).toLocaleString()}
-                    </span>
-                  </p>
-                )}
-
-                <button className="mt-6 w-full rounded-full bg-orange-500 px-6 py-4 font-black text-white shadow-lg hover:bg-orange-400">
-                  Sync Inventory
-                </button>
-              </form>
-            ) : (
-              <div>
-                <p className="text-2xl font-black text-orange-400">
-                  Steam not linked yet
-                </p>
-
-                <p className="mt-3 text-sm text-zinc-400">
-                  Link Steam when you want to sync your real CS2 inventory.
-                  Steam linking is optional.
-                </p>
-
-                <a
-                  href="/api/auth/steam/login"
-                  className="mt-6 block rounded-full bg-orange-500 px-6 py-4 text-center font-black text-white shadow-lg hover:bg-orange-400"
-                >
-                  Link Steam Account
-                </a>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {currentUser.steam_id ? (
-          <div className="mt-8 rounded-[32px] border border-zinc-800 bg-black/80 p-6 backdrop-blur">
-            <InventorySearchGrid items={inventoryItems || []} />
-          </div>
-        ) : (
-          <div className="mt-8 rounded-[32px] border border-zinc-800 bg-black/80 p-8 backdrop-blur">
-            <h2 className="text-3xl font-black">Inventory sync is optional</h2>
-
-            <p className="mt-3 max-w-3xl text-zinc-300">
-              You can still browse trades, message users, save listings, create
-              listings, and use your account without linking Steam. Steam is
-              only needed if you want your real CS2 inventory to appear here.
-            </p>
-
-            <div className="mt-6 flex flex-wrap gap-3">
-              <a
-                href="/search-trades"
-                className="rounded-full bg-orange-500 px-6 py-3 font-black text-white hover:bg-orange-400"
-              >
-                Search Trades
-              </a>
-
-              <a
-                href="/listings"
-                className="rounded-full border border-zinc-700 px-6 py-3 font-black hover:bg-zinc-800"
-              >
-                Create Listing
-              </a>
-            </div>
-          </div>
-        )}
+        <a
+          href="/listings"
+          className="rounded-xl border border-zinc-700 px-6 py-3 font-bold hover:bg-zinc-800"
+        >
+          My Trades
+        </a>
       </div>
-    </AppShell>
+    </div>
+  </div>
+</AppShell>
   );
 }
 

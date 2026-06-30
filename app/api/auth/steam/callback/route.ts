@@ -70,16 +70,16 @@ export async function GET(request: NextRequest) {
   }
 
   const { error: linkError } = await supabase
-    .from("users")
-    .update({
-      steam_id: steamId,
-      steam_name: player.personaname,
-      avatar_url: player.avatarfull,
-      steam_avatar: player.avatarfull,
-      profile_url: player.profileurl,
-      steam_profile_url: player.profileurl,
-    })
-    .eq("auth_user_id", authUser.id);
+  .from("users")
+  .update({
+    steam_id: steamId,
+    steam_name: player.personaname,
+    avatar_url: player.avatarfull,
+    steam_avatar: player.avatarfull,
+    profile_url: player.profileurl,
+    steam_profile_url: player.profileurl,
+  })
+  .or(`auth_user_id.eq.${authUser.id},id.eq.${authUser.id}`);
 
   if (linkError) {
     return NextResponse.redirect(

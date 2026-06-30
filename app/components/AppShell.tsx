@@ -308,7 +308,7 @@ function SidebarLink({
   return (
     <a
       href={href}
-      className={`group flex items-center justify-between rounded-xl px-4 py-4 text-[17px] font-semibold transition ${
+      className={`group flex items-center justify-between rounded-xl px-4 py-3 text-[17px] font-semibold transition ${
         admin
           ? "border border-orange-500/20 bg-orange-500/5 text-orange-300 hover:bg-orange-500/15"
           : "text-zinc-300 hover:bg-white/5 hover:text-white"

@@ -10,27 +10,36 @@ export async function GET(request: NextRequest) {
   const claimedId = url.searchParams.get("openid.claimed_id");
 
   if (!claimedId) {
-    return NextResponse.json(
-      { error: "No Steam ID received" },
-      { status: 400 }
+    return NextResponse.redirect(
+      new URL("/login?error=no_steam_id", request.url)
     );
   }
 
   const steamId = claimedId.split("/").pop();
 
   if (!steamId) {
-    return NextResponse.json(
-      { error: "Invalid Steam ID" },
-      { status: 400 }
+    return NextResponse.redirect(
+      new URL("/login?error=invalid_steam_id", request.url)
     );
   }
 
   const steamApiKey = process.env.STEAM_API_KEY;
 
   if (!steamApiKey) {
-    return NextResponse.json(
-      { error: "Missing STEAM_API_KEY" },
-      { status: 500 }
+    return NextResponse.redirect(
+      new URL("/settings?error=missing_steam_key", request.url)
+    );
+  }
+
+  const supabaseServer = await createSupabaseServerClient();
+
+  const {
+    data: { user: authUser },
+  } = await supabaseServer.auth.getUser();
+
+  if (!authUser) {
+    return NextResponse.redirect(
+      new URL("/login?error=sign_in_before_linking_steam", request.url)
     );
   }
 
@@ -43,97 +52,51 @@ export async function GET(request: NextRequest) {
   const player = steamData.response.players[0];
 
   if (!player) {
-    return NextResponse.json(
-      { error: "Steam profile not found" },
-      { status: 404 }
+    return NextResponse.redirect(
+      new URL("/settings?error=steam_profile_not_found", request.url)
     );
   }
 
-  const supabaseServer = await createSupabaseServerClient();
+  const { data: existingSteamUser } = await supabase
+    .from("users")
+    .select("id, auth_user_id")
+    .eq("steam_id", steamId)
+    .maybeSingle();
 
-  const {
-    data: { user: authUser },
-  } = await supabaseServer.auth.getUser();
-
-  if (authUser) {
-    const { data: existingSteamUser } = await supabase
-      .from("users")
-      .select("id")
-      .eq("steam_id", steamId)
-      .neq("auth_user_id", authUser.id)
-      .maybeSingle();
-
-    if (existingSteamUser) {
-      return NextResponse.redirect(
-        new URL("/settings?error=steam_already_linked", request.url)
-      );
-    }
-
-    const { error: linkError } = await supabase
-      .from("users")
-      .update({
-        steam_id: steamId,
-        steam_name: player.personaname,
-        avatar_url: player.avatarfull,
-        steam_avatar: player.avatarfull,
-        profile_url: player.profileurl,
-        steam_profile_url: player.profileurl,
-      })
-      .eq("auth_user_id", authUser.id);
-
-    if (linkError) {
-      return NextResponse.json(
-        { error: linkError.message },
-        { status: 500 }
-      );
-    }
-
-    const response = NextResponse.redirect(
-      new URL("/settings?linked=steam", request.url)
+  if (existingSteamUser && existingSteamUser.auth_user_id !== authUser.id) {
+    return NextResponse.redirect(
+      new URL("/settings?error=steam_already_linked", request.url)
     );
-
-    response.cookies.set("steam_id", "", {
-      expires: new Date(0),
-      path: "/",
-    });
-
-    return response;
   }
 
-  const { error } = await supabase.from("users").upsert(
-    {
+  const { error: linkError } = await supabase
+    .from("users")
+    .update({
       steam_id: steamId,
-      username: player.personaname,
       steam_name: player.personaname,
       avatar_url: player.avatarfull,
       steam_avatar: player.avatarfull,
       profile_url: player.profileurl,
       steam_profile_url: player.profileurl,
-      average_rating: 5,
-      review_count: 0,
-      trade_count: 0,
-      role: "user",
-    },
-    {
-      onConflict: "steam_id",
-    }
-  );
+    })
+    .eq("auth_user_id", authUser.id);
 
-  if (error) {
-    return NextResponse.json(
-      { error: error.message },
-      { status: 500 }
+  if (linkError) {
+    return NextResponse.redirect(
+      new URL(
+        `/settings?error=${encodeURIComponent(linkError.message)}`,
+        request.url
+      )
     );
   }
 
-  const response = NextResponse.redirect(new URL("/dashboard", request.url));
+  const response = NextResponse.redirect(
+    new URL("/settings?linked=steam", request.url)
+  );
 
-  response.cookies.set("steam_id", steamId, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
+  response.cookies.set("steam_id", "", {
+    expires: new Date(0),
     path: "/",
-    maxAge: 60 * 60 * 24 * 30,
   });
 
   return response;

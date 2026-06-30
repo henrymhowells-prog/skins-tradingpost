@@ -59,7 +59,7 @@ export default function ClientChatBox({
       });
     }
 
-    pollTimer.current = setInterval(fetchMessages, 2500);
+    pollTimer.current = setInterval(fetchMessages, 4000);
 
     return () => {
       if (pollTimer.current) {

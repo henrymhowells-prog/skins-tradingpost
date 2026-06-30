@@ -1,3 +1,5 @@
+import { FaDiscord, FaInstagram } from "react-icons/fa";
+import { SiTiktok, SiX } from "react-icons/si";
 import { supabase } from "../lib/supabase";
 import { getCurrentUser } from "../lib/currentUser";
 
@@ -11,6 +13,33 @@ const mainNavItems = [
   { href: "/reviews", label: "Reviews" },
   { href: "/settings", label: "Settings" },
   { href: "/about", label: "About" },
+];
+
+const socialLinks = [
+  {
+    href: "https://instagram.com/skinstradingpost",
+    label: "Instagram",
+    icon: <FaInstagram size={22} />,
+    className: "text-pink-500 hover:text-pink-400",
+  },
+  {
+    href: "https://tiktok.com/@skinstradingpost",
+    label: "TikTok",
+    icon: <SiTiktok size={22} />,
+    className: "text-white hover:text-zinc-300",
+  },
+  {
+    href: "https://discord.gg/YOURINVITE",
+    label: "Discord",
+    icon: <FaDiscord size={22} />,
+    className: "text-indigo-500 hover:text-indigo-400",
+  },
+  {
+    href: "https://x.com/skinstradingpost",
+    label: "X",
+    icon: <SiX size={22} />,
+    className: "text-white hover:text-zinc-300",
+  },
 ];
 
 export default async function AppShell({
@@ -90,6 +119,8 @@ export default async function AppShell({
                 </div>
               </>
             )}
+
+            <SocialLinks />
           </nav>
         </aside>
 
@@ -121,6 +152,31 @@ function LogoBox() {
         TradingPost
       </span>
     </a>
+  );
+}
+
+function SocialLinks() {
+  return (
+    <div className="mt-8 border-t border-white/10 pt-6">
+      <p className="mb-4 px-4 text-[11px] font-black uppercase tracking-[0.2em] text-zinc-500">
+        Join Community
+      </p>
+
+      <div className="flex items-center justify-center gap-5">
+        {socialLinks.map((link) => (
+          <a
+            key={link.label}
+            href={link.href}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={link.label}
+            className={`transition hover:scale-110 ${link.className}`}
+          >
+            {link.icon}
+          </a>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -184,6 +240,8 @@ function MobileNav({
                   />
                 ))}
 
+                <MobileSocialLinks />
+
                 {isAdmin && (
                   <>
                     <div className="my-2 border-t border-white/10" />
@@ -204,6 +262,33 @@ function MobileNav({
         </div>
       </div>
     </div>
+  );
+}
+
+function MobileSocialLinks() {
+  return (
+    <>
+      <div className="my-2 border-t border-white/10" />
+
+      <p className="px-3 py-2 text-[11px] font-black uppercase tracking-[0.2em] text-zinc-500">
+        Join Community
+      </p>
+
+      <div className="flex items-center justify-center gap-6 px-3 py-3">
+        {socialLinks.map((link) => (
+          <a
+            key={link.label}
+            href={link.href}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={link.label}
+            className={`transition hover:scale-110 ${link.className}`}
+          >
+            {link.icon}
+          </a>
+        ))}
+      </div>
+    </>
   );
 }
 

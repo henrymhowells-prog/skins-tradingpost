@@ -7,6 +7,8 @@ import { getCurrentUser } from "../lib/currentUser";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
+const PAGE_SIZE = 50;
+
 async function saveListing(formData: FormData) {
   "use server";
 
@@ -46,7 +48,6 @@ async function unsaveListing(formData: FormData) {
   revalidatePath("/search-trades");
   revalidatePath("/saved");
 }
-
 
 function getItemCategory(itemName: string) {
   const name = itemName.toLowerCase();
@@ -221,6 +222,30 @@ function getSideItems({
   return [...giving, ...wanting];
 }
 
+function groupByListingId(items: any[]) {
+  const map = new Map<string, any[]>();
+
+  for (const item of items || []) {
+    const current = map.get(item.listing_id) || [];
+    current.push(item);
+    map.set(item.listing_id, current);
+  }
+
+  return map;
+}
+
+function mapByKey(items: any[], key: string) {
+  const map = new Map<string, any>();
+
+  for (const item of items || []) {
+    if (item?.[key]) {
+      map.set(String(item[key]), item);
+    }
+  }
+
+  return map;
+}
+
 export default async function SearchTradesPage({
   searchParams,
 }: {
@@ -232,6 +257,7 @@ export default async function SearchTradesPage({
     side?: string;
     stattrak?: string;
     souvenir?: string;
+    page?: string;
   }>;
 }) {
   const params = searchParams ? await searchParams : {};
@@ -243,6 +269,9 @@ export default async function SearchTradesPage({
   const searchSide = params.side || "both";
   const stattrak = params.stattrak || "all";
   const souvenir = params.souvenir || "all";
+  const page = Math.max(1, Number(params.page || 1));
+  const from = (page - 1) * PAGE_SIZE;
+  const to = from + PAGE_SIZE - 1;
   const nowIso = new Date().toISOString();
 
   const currentUser = await getCurrentUser();
@@ -254,36 +283,105 @@ export default async function SearchTradesPage({
         .eq("user_id", currentUser.id)
     : { data: [] };
 
-  const { data: listingsRaw } = await supabase
+  let matchingListingIds: string[] | null = null;
+
+  if (query) {
+    const [offerMatches, wantedMatches] = await Promise.all([
+      supabase
+        .from("listing_offer_items")
+        .select("listing_id")
+        .ilike("item_name", `%${query}%`)
+        .limit(500),
+
+      supabase
+        .from("listing_wanted_items")
+        .select("listing_id")
+        .ilike("item_name", `%${query}%`)
+        .limit(500),
+    ]);
+
+    matchingListingIds = Array.from(
+      new Set([
+        ...((offerMatches.data || []).map((item) => item.listing_id) || []),
+        ...((wantedMatches.data || []).map((item) => item.listing_id) || []),
+      ])
+    );
+  }
+
+  let listingsQuery = supabase
     .from("listings")
     .select("*")
     .gt("expires_at", nowIso)
     .order("refreshed_at", { ascending: sort === "oldest" });
 
-  const { data: users } = await supabase.from("users").select("*");
+  if (matchingListingIds) {
+    if (matchingListingIds.length === 0) {
+      listingsQuery = listingsQuery.in("id", ["00000000-0000-0000-0000-000000000000"]);
+    } else {
+      listingsQuery = listingsQuery.in("id", matchingListingIds);
+    }
+  }
 
-  const { data: offerItems } = await supabase
-    .from("listing_offer_items")
-    .select("*");
+  const { data: listingsRaw } = await listingsQuery.range(from, to);
 
-  const { data: wantedItems } = await supabase
-    .from("listing_wanted_items")
-    .select("*");
+  const listingIds = (listingsRaw || []).map((listing) => listing.id);
+  const userIds = Array.from(
+    new Set((listingsRaw || []).map((listing) => listing.user_id).filter(Boolean))
+  );
 
-  const { data: inventoryItems } = await supabase
-    .from("inventory_items")
-    .select("id, item_name, image_url, inspect_link");
+  const [{ data: users }, { data: offerItems }, { data: wantedItems }] =
+    listingIds.length > 0
+      ? await Promise.all([
+          userIds.length > 0
+            ? supabase.from("users").select("*").in("id", userIds)
+            : Promise.resolve({ data: [] } as any),
 
-  const { data: cs2Items } = await supabase
-    .from("cs2_items")
-    .select("item_name, image_url, weapon_type, rarity")
-    .range(0, 25000);
+          supabase
+            .from("listing_offer_items")
+            .select("*")
+            .in("listing_id", listingIds),
+
+          supabase
+            .from("listing_wanted_items")
+            .select("*")
+            .in("listing_id", listingIds),
+        ])
+      : [{ data: [] }, { data: [] }, { data: [] }];
+
+  const itemNames = Array.from(
+    new Set(
+      [...(offerItems || []), ...(wantedItems || [])]
+        .map((item) => item.item_name)
+        .filter(Boolean)
+    )
+  );
+
+  const [{ data: cs2Items }, { data: inventoryItems }] =
+    itemNames.length > 0
+      ? await Promise.all([
+          supabase
+            .from("cs2_items")
+            .select("item_name, image_url, weapon_type, rarity")
+            .in("item_name", itemNames),
+
+          supabase
+            .from("inventory_items")
+            .select("id, item_name, image_url, inspect_link")
+            .in("item_name", itemNames),
+        ])
+      : [{ data: [] }, { data: [] }];
+
+  const offerMap = groupByListingId(offerItems || []);
+  const wantedMap = groupByListingId(wantedItems || []);
+  const userMap = mapByKey(users || [], "id");
+  const cs2ItemMap = mapByKey(cs2Items || [], "item_name");
+  const inventoryItemMap = mapByKey(inventoryItems || [], "item_name");
 
   const listings =
     sort === "highest-rated"
       ? [...(listingsRaw || [])].sort((a, b) => {
-          const traderA = (users || []).find((user) => user.id === a.user_id);
-          const traderB = (users || []).find((user) => user.id === b.user_id);
+          const traderA = userMap.get(a.user_id);
+          const traderB = userMap.get(b.user_id);
 
           return (
             Number(traderB?.average_rating || 0) -
@@ -293,13 +391,8 @@ export default async function SearchTradesPage({
       : listingsRaw || [];
 
   const filteredListings = listings.filter((listing) => {
-    const giving = (offerItems || []).filter(
-      (item) => item.listing_id === listing.id
-    );
-
-    const wanting = (wantedItems || []).filter(
-      (item) => item.listing_id === listing.id
-    );
+    const giving = offerMap.get(listing.id) || [];
+    const wanting = wantedMap.get(listing.id) || [];
 
     const sideItems = getSideItems({
       searchSide,
@@ -325,9 +418,7 @@ export default async function SearchTradesPage({
 
     if (rarity !== "all") {
       const matchesRarity = sideItems.some((item) => {
-        const details = (cs2Items || []).find(
-          (cs2) => cs2.item_name === item.item_name
-        );
+        const details = cs2ItemMap.get(item.item_name);
 
         return String(item.rarity || details?.rarity || "")
           .toLowerCase()
@@ -362,11 +453,27 @@ export default async function SearchTradesPage({
     return true;
   });
 
+  function pageHref(nextPage: number) {
+    const search = new URLSearchParams();
+
+    if (query) search.set("q", query);
+    if (sort !== "newest") search.set("sort", sort);
+    if (category !== "all") search.set("category", category);
+    if (rarity !== "all") search.set("rarity", rarity);
+    if (searchSide !== "both") search.set("side", searchSide);
+    if (stattrak !== "all") search.set("stattrak", stattrak);
+    if (souvenir !== "all") search.set("souvenir", souvenir);
+    if (nextPage > 1) search.set("page", String(nextPage));
+
+    const queryString = search.toString();
+    return queryString ? `/search-trades?${queryString}` : "/search-trades";
+  }
+
   return (
     <AppShell>
-  <PageBackground leftOffset={256} />
+      <PageBackground leftOffset={256} />
 
-  <div className="relative z-10">
+      <div className="relative z-10">
         <h1 className="text-5xl font-bold">Search Trades</h1>
 
         <p className="mt-3 text-zinc-300">
@@ -479,147 +586,166 @@ export default async function SearchTradesPage({
           </button>
         </form>
 
-        <p className="mt-4 text-sm text-zinc-400">
-          Showing {filteredListings.length} listing
-          {filteredListings.length === 1 ? "" : "s"}.
-        </p>
+        <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm text-zinc-400">
+            Showing {filteredListings.length} listing
+            {filteredListings.length === 1 ? "" : "s"} on page {page}.
+          </p>
+
+          <div className="flex gap-3">
+            {page > 1 && (
+              <a
+                href={pageHref(page - 1)}
+                className="rounded-xl border border-zinc-700 px-4 py-2 text-sm font-semibold hover:bg-zinc-800"
+              >
+                Previous
+              </a>
+            )}
+
+            {(listingsRaw || []).length === PAGE_SIZE && (
+              <a
+                href={pageHref(page + 1)}
+                className="rounded-xl bg-orange-500 px-4 py-2 text-sm font-semibold text-black hover:bg-orange-400"
+              >
+                Next Page
+              </a>
+            )}
+          </div>
+        </div>
 
         <div className="mt-8 grid gap-8">
-          {filteredListings.map((listing) => {
-            const giving = (offerItems || []).filter(
-              (item) => item.listing_id === listing.id
-            );
+          {filteredListings.length === 0 ? (
+            <div className="rounded-3xl border border-zinc-800 bg-black/80 p-8 text-zinc-500 backdrop-blur">
+              No trades found. Try a different search.
+            </div>
+          ) : (
+            filteredListings.map((listing) => {
+              const giving = offerMap.get(listing.id) || [];
+              const wanting = wantedMap.get(listing.id) || [];
 
-            const wanting = (wantedItems || []).filter(
-              (item) => item.listing_id === listing.id
-            );
+              const isSaved = (savedListings || []).some(
+                (saved) => saved.listing_id === listing.id
+              );
 
-            const isSaved = (savedListings || []).some(
-              (saved) => saved.listing_id === listing.id
-            );
+              const postedDate = listing.refreshed_at || listing.created_at;
 
-            const postedDate = listing.refreshed_at || listing.created_at;
+              return (
+                <div
+                  key={listing.id}
+                  className="rounded-3xl border border-zinc-800 bg-black/80 p-8 backdrop-blur"
+                >
+                  <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
+                    <div>
+                      <h2 className="text-3xl font-bold">{listing.title}</h2>
 
-            return (
-              <div
-                key={listing.id}
-                className="rounded-3xl border border-zinc-800 bg-black/80 p-8 backdrop-blur"
-              >
-                <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
-                  <div>
-                    <h2 className="text-3xl font-bold">{listing.title}</h2>
+                      <p className="mt-2 text-sm text-green-400">
+                        Status: {listing.status}
+                      </p>
 
-                    <p className="mt-2 text-sm text-green-400">
-                      Status: {listing.status}
-                    </p>
+                      <p className="mt-1 text-sm text-zinc-400">
+                        Posted {postedDate ? timeAgo(postedDate) : "recently"}
+                      </p>
+                    </div>
 
-                    <p className="mt-1 text-sm text-zinc-400">
-                      Posted {postedDate ? timeAgo(postedDate) : "recently"}
-                    </p>
-                  </div>
+                    <div className="flex flex-wrap gap-3">
+                      <a
+                        href={`/trade/${listing.id}`}
+                        className="rounded-xl bg-orange-500 px-5 py-3 font-semibold text-black hover:bg-orange-400"
+                      >
+                        View Trade
+                      </a>
 
-                  <div className="flex flex-wrap gap-3">
-                    <a
-                      href={`/trade/${listing.id}`}
-                      className="rounded-xl bg-orange-500 px-5 py-3 font-semibold text-black hover:bg-orange-400"
-                    >
-                      View Trade
-                    </a>
+                      <form action={isSaved ? unsaveListing : saveListing}>
+                        <input
+                          type="hidden"
+                          name="listing_id"
+                          value={listing.id}
+                        />
 
-                    <form action={isSaved ? unsaveListing : saveListing}>
-                      <input
-                        type="hidden"
-                        name="listing_id"
-                        value={listing.id}
-                      />
-
-                      <button className="rounded-xl border border-zinc-700 px-5 py-3 font-semibold hover:bg-zinc-800">
-                        {isSaved ? "🔖 Saved" : "🔖 Save"}
-                      </button>
-                    </form>
-                  </div>
-                </div>
-
-                <div className="mt-8 grid items-center gap-8 lg:grid-cols-[1fr_220px_1fr]">
-                  <div className="min-h-[340px] rounded-[32px] border border-zinc-800 bg-black/90 p-6">
-                    <h3 className="mb-6 text-2xl font-bold text-orange-400">
-                      They Give
-                    </h3>
-
-                    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                      {giving.map((item) => {
-                        const cs2Details = (cs2Items || []).find(
-                          (cs2) => cs2.item_name === item.item_name
-                        );
-
-                        const inventoryDetails = (inventoryItems || []).find(
-                          (inv) =>
-                            inv.id === item.inventory_item_id ||
-                            inv.item_name === item.item_name
-                        );
-
-                        return (
-                          <TradeItemCard
-                            key={item.id}
-                            item={item}
-                            imageUrl={
-                              item.image_url ||
-                              cs2Details?.image_url ||
-                              inventoryDetails?.image_url ||
-                              null
-                            }
-                          />
-                        );
-                      })}
-
-                      {listing.give_item_overpay && (
-                        <ItemOverpayCard side="orange" />
-                      )}
-                      {listing.give_open_to_offers && <OpenToOffersCard side="orange" />}
+                        <button className="rounded-xl border border-zinc-700 px-5 py-3 font-semibold hover:bg-zinc-800">
+                          {isSaved ? "🔖 Saved" : "🔖 Save"}
+                        </button>
+                      </form>
                     </div>
                   </div>
 
-                  <div className="hidden flex-col items-center justify-center gap-8 lg:flex">
-                    <div className="flex items-center gap-3 text-orange-400">
-                      <div className="h-1 w-24 bg-orange-500" />
-                      <span className="text-6xl leading-none">→</span>
+                  <div className="mt-8 grid items-center gap-8 lg:grid-cols-[1fr_220px_1fr]">
+                    <div className="min-h-[340px] rounded-[32px] border border-zinc-800 bg-black/90 p-6">
+                      <h3 className="mb-6 text-2xl font-bold text-orange-400">
+                        They Give
+                      </h3>
+
+                      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                        {giving.map((item) => {
+                          const cs2Details = cs2ItemMap.get(item.item_name);
+                          const inventoryDetails = inventoryItemMap.get(
+                            item.item_name
+                          );
+
+                          return (
+                            <TradeItemCard
+                              key={item.id}
+                              item={item}
+                              imageUrl={
+                                item.image_url ||
+                                cs2Details?.image_url ||
+                                inventoryDetails?.image_url ||
+                                null
+                              }
+                            />
+                          );
+                        })}
+
+                        {listing.give_item_overpay && (
+                          <ItemOverpayCard side="orange" />
+                        )}
+
+                        {listing.give_open_to_offers && (
+                          <OpenToOffersCard side="orange" />
+                        )}
+                      </div>
                     </div>
 
-                    <div className="flex items-center gap-3 text-blue-400">
-                      <span className="text-6xl leading-none">←</span>
-                      <div className="h-1 w-24 bg-blue-500" />
+                    <div className="hidden flex-col items-center justify-center gap-8 lg:flex">
+                      <div className="flex items-center gap-3 text-orange-400">
+                        <div className="h-1 w-24 bg-orange-500" />
+                        <span className="text-6xl leading-none">→</span>
+                      </div>
+
+                      <div className="flex items-center gap-3 text-blue-400">
+                        <span className="text-6xl leading-none">←</span>
+                        <div className="h-1 w-24 bg-blue-500" />
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="min-h-[340px] rounded-[32px] border border-zinc-800 bg-black/90 p-6">
-                    <h3 className="mb-6 text-2xl font-bold text-blue-400">
-                      They Want
-                    </h3>
+                    <div className="min-h-[340px] rounded-[32px] border border-zinc-800 bg-black/90 p-6">
+                      <h3 className="mb-6 text-2xl font-bold text-blue-400">
+                        They Want
+                      </h3>
 
-                    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                      {wanting.map((item) => {
-                        const details = (cs2Items || []).find(
-                          (cs2) => cs2.item_name === item.item_name
-                        );
+                      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                        {wanting.map((item) => {
+                          const details = cs2ItemMap.get(item.item_name);
 
-                        return (
-                          <TradeItemCard
-                            key={item.id}
-                            item={item}
-                            imageUrl={item.image_url || details?.image_url || null}
-                          />
-                        );
-                      })}
+                          return (
+                            <TradeItemCard
+                              key={item.id}
+                              item={item}
+                              imageUrl={item.image_url || details?.image_url || null}
+                            />
+                          );
+                        })}
 
-                      {listing.want_item_overpay && (
-                        <ItemOverpayCard side="blue" />
-                      )}
+                        {listing.want_item_overpay && (
+                          <ItemOverpayCard side="blue" />
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })
+          )}
         </div>
       </div>
     </AppShell>

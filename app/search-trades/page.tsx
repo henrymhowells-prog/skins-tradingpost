@@ -766,8 +766,12 @@ export default async function SearchTradesPage({
                         })}
 
                         {listing.want_item_overpay && (
-                          <ItemOverpayCard side="blue" />
-                        )}
+  <ItemOverpayCard side="blue" />
+)}
+
+{listing.want_open_to_offers && (
+  <OpenToOffersCard side="blue" />
+)}
                       </div>
                     </div>
                   </div>

@@ -113,7 +113,7 @@ export default function HomePage() {
           </a>
 
           <a
-            href="https://discord.gg/https://discord.gg/tbYDZjcvf"
+            href="https://discord.gg/https://https://discord.gg/Y4SfEVwhE"
             target="_blank"
             rel="noopener noreferrer"
             aria-label="Discord"

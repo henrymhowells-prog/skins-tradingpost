@@ -29,7 +29,7 @@ const socialLinks = [
     className: "text-white hover:text-zinc-300",
   },
   {
-    href: "https://discord.gg/YOURINVITE",
+    href: "https://discord.gg/https://discord.gg/tbYDZjcvf",
     label: "Discord",
     icon: <FaDiscord size={22} />,
     className: "text-indigo-500 hover:text-indigo-400",

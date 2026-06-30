@@ -73,7 +73,10 @@ export default function HomePage() {
             Create Account
           </a>
 
-          <a href="/search-trades" className="mt-1 block text-center transition group">
+          <a
+            href="/search-trades"
+            className="group mt-1 block text-center transition"
+          >
             <p className="text-sm font-semibold text-zinc-300 group-hover:text-orange-400">
               Continue as Guest
             </p>
@@ -90,28 +93,40 @@ export default function HomePage() {
 
         <div className="absolute bottom-10 flex items-center gap-9 rounded-full border border-blue-800 bg-zinc-950/95 px-12 py-5 shadow-[8px_8px_0_rgba(194,112,18,0.75)]">
           <a
-            href="#"
+            href="https://instagram.com/skinstradingpost"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Instagram"
             className="text-3xl text-pink-500 transition hover:scale-110"
           >
             <FaInstagram />
           </a>
 
           <a
-            href="#"
+            href="https://tiktok.com/@skinstradingpost"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="TikTok"
             className="text-3xl text-white transition hover:scale-110"
           >
             <SiTiktok />
           </a>
 
           <a
-            href="#"
+            href="https://discord.gg/https://discord.gg/tbYDZjcvf"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Discord"
             className="text-3xl text-indigo-500 transition hover:scale-110"
           >
             <FaDiscord />
           </a>
 
           <a
-            href="#"
+            href="https://x.com/skinstradingpost"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="X"
             className="text-3xl text-white transition hover:scale-110"
           >
             <SiX />

@@ -257,6 +257,7 @@ export default async function SearchTradesPage({
     side?: string;
     stattrak?: string;
     souvenir?: string;
+    wear?: string;
     page?: string;
   }>;
 }) {
@@ -269,6 +270,7 @@ export default async function SearchTradesPage({
   const searchSide = params.side || "both";
   const stattrak = params.stattrak || "all";
   const souvenir = params.souvenir || "all";
+  const wear = params.wear || "all";
   const page = Math.max(1, Number(params.page || 1));
   const from = (page - 1) * PAGE_SIZE;
   const to = from + PAGE_SIZE - 1;
@@ -316,7 +318,9 @@ export default async function SearchTradesPage({
 
   if (matchingListingIds) {
     if (matchingListingIds.length === 0) {
-      listingsQuery = listingsQuery.in("id", ["00000000-0000-0000-0000-000000000000"]);
+      listingsQuery = listingsQuery.in("id", [
+        "00000000-0000-0000-0000-000000000000",
+      ]);
     } else {
       listingsQuery = listingsQuery.in("id", matchingListingIds);
     }
@@ -450,6 +454,14 @@ export default async function SearchTradesPage({
       if (!matchesSouvenir) return false;
     }
 
+    if (wear !== "all") {
+      const matchesWear = sideItems.some((item) =>
+        item.item_name.toLowerCase().includes(`(${wear.toLowerCase()})`)
+      );
+
+      if (!matchesWear) return false;
+    }
+
     return true;
   });
 
@@ -463,6 +475,7 @@ export default async function SearchTradesPage({
     if (searchSide !== "both") search.set("side", searchSide);
     if (stattrak !== "all") search.set("stattrak", stattrak);
     if (souvenir !== "all") search.set("souvenir", souvenir);
+    if (wear !== "all") search.set("wear", wear);
     if (nextPage > 1) search.set("page", String(nextPage));
 
     const queryString = search.toString();
@@ -482,7 +495,7 @@ export default async function SearchTradesPage({
         </p>
 
         <form className="mt-8 rounded-3xl border border-zinc-800 bg-black/80 p-6 backdrop-blur">
-          <div className="grid gap-4 lg:grid-cols-7">
+          <div className="grid gap-4 lg:grid-cols-8">
             <div>
               <label className="text-sm text-zinc-400">Search Item</label>
               <input
@@ -577,6 +590,22 @@ export default async function SearchTradesPage({
                 <option value="all">Any</option>
                 <option value="yes">Souvenir Only</option>
                 <option value="no">No Souvenir</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="text-sm text-zinc-400">Wear</label>
+              <select
+                name="wear"
+                defaultValue={wear}
+                className="mt-2 w-full rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-3 outline-none focus:border-orange-500"
+              >
+                <option value="all">All Wears</option>
+                <option value="Factory New">Factory New</option>
+                <option value="Minimal Wear">Minimal Wear</option>
+                <option value="Field-Tested">Field-Tested</option>
+                <option value="Well-Worn">Well-Worn</option>
+                <option value="Battle-Scarred">Battle-Scarred</option>
               </select>
             </div>
           </div>

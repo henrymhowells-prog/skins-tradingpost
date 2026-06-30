@@ -32,7 +32,6 @@ export async function POST(request: Request) {
     .single();
 
   if (error) {
-    console.error("Send message error:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 

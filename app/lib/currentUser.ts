@@ -7,21 +7,26 @@ export async function getCurrentUser() {
 
   const {
     data: { user: authUser },
-    error,
+    error: authError,
   } = await supabaseServer.auth.getUser();
 
-  if (error || !authUser) {
+  if (authError || !authUser) {
     return null;
   }
 
-  const { data: emailUser } = await supabase
+  const { data: emailUser, error: userError } = await supabase
     .from("users")
     .select("*")
     .eq("auth_user_id", authUser.id)
     .maybeSingle();
 
+  if (userError) {
+    console.error("Get current user error:", userError);
+    return null;
+  }
+
   if (!emailUser) {
-    const { data: createdUser } = await supabase
+    const { data: createdUser, error: createError } = await supabase
       .from("users")
       .insert({
         auth_user_id: authUser.id,
@@ -34,6 +39,11 @@ export async function getCurrentUser() {
       })
       .select("*")
       .single();
+
+    if (createError) {
+      console.error("Create current user error:", createError);
+      return null;
+    }
 
     return createdUser || null;
   }

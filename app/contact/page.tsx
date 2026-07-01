@@ -18,10 +18,10 @@ export default function ContactPage() {
         <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-4">
           <p className="text-sm text-zinc-500">Email</p>
           <a
-            href="mailto:support@skinstradingpost.com"
+            href="mailto:skinstradingpost@outlook.com"
             className="mt-1 inline-block font-medium text-orange-400 hover:text-orange-300"
           >
-            support@skinstradingpost.com
+            skinstradingpost@outlook.com
           </a>
         </div>
 

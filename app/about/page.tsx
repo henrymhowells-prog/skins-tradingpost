@@ -115,7 +115,7 @@ export default function AboutPage() {
           </p>
 
           <p className="mt-3 text-xl font-bold text-orange-400">
-            support@skinstradingpost.com
+            skinstradingpost@outlook.com
           </p>
 
           <a
